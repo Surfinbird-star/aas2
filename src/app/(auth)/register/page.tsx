@@ -58,7 +58,11 @@ export default function RegisterPage() {
           console.log('Отправка запроса на API для создания профиля');
           
           // Используем серверный API-маршрут для создания профиля в обход RLS
-          const response = await fetch('/api/register', {
+          const currentPort = window.location.port || '3000';
+          const baseUrl = `${window.location.protocol}//${window.location.hostname}:${currentPort}`;
+          console.log('Используем базовый URL:', baseUrl);
+          
+          const response = await fetch(`${baseUrl}/api/register`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -76,7 +80,41 @@ export default function RegisterPage() {
           console.log('Профиль успешно создан через API:', result.data);
         } catch (profileErr: any) {
           console.error('Сбой при создании профиля:', profileErr.message);
-          throw new Error(`Ошибка при создании профиля: ${profileErr.message}`);
+          
+          // Если произошла ошибка сети, попробуем обновить профиль напрямую через Supabase
+          if (profileErr.message === 'Failed to fetch') {
+            try {
+              console.log('Попытка создания профиля напрямую через Supabase');
+              const supabaseAdmin = getSupabaseAdmin();
+              const { data, error } = await supabaseAdmin
+                .from('profiles')
+                .upsert([
+                  {
+                    id: authData.user.id,
+                    first_name: firstName,
+                    last_name: lastName,
+                    name: firstName + ' ' + lastName,
+                    email: email,
+                    phone,
+                    address: address || null,
+                    created_at: new Date().toISOString()
+                  }
+                ])
+                .select();
+              
+              if (error) {
+                console.error('Ошибка при прямом обновлении профиля:', error.message);
+                throw new Error(`Ошибка при прямом обновлении профиля: ${error.message}`);
+              }
+              
+              console.log('Профиль успешно обновлен напрямую:', data);
+            } catch (directError: any) {
+              console.error('Ошибка при прямом обновлении:', directError.message);
+              throw new Error(`Ошибка при прямом обновлении профиля: ${directError.message}`);
+            }
+          } else {
+            throw new Error(`Ошибка при создании профиля: ${profileErr.message}`);
+          }
         }
 
         // Успешная регистрация, перенаправление на страницу с товарами

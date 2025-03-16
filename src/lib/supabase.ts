@@ -12,8 +12,9 @@ const isBrowser = typeof window !== 'undefined';
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: isBrowser, // Сохраняем сессию только в браузере
-    storageKey: 'foodapp-auth', // Уникальный ключ хранения
-  },
+    autoRefreshToken: true,
+    storageKey: 'foodapp-auth' // Уникальный ключ хранения
+  }
 });
 
 // Клиент для серверных операций - используется только на сервере
@@ -39,6 +40,7 @@ export type Tables = {
     phone: string;
     address?: string;
     created_at: string;
+    is_admin?: boolean;
   };
   products: {
     id: number;

@@ -235,13 +235,13 @@ export default function ProductsPage() {
       </div>
 
       {/* Выбор категории */}
-      <div className="mb-8 overflow-x-auto">
-        <div className="flex space-x-3 pb-2">
+      <div className="mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2 auto-rows-fr">
           {categories.map((category) => (
             <button
               key={category.id}
               onClick={() => setSelectedCategory(category.id)}
-              className={`px-5 py-2 rounded-md whitespace-nowrap font-medium text-base shadow-sm ${
+              className={`px-3 py-1.5 rounded-md text-sm font-medium shadow-sm h-full w-full flex items-center justify-center ${
                 selectedCategory === category.id
                   ? 'bg-blue-700 text-white'
                   : 'bg-gray-100 text-gray-800 hover:bg-gray-200 border border-gray-300'

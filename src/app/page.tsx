@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import Image from 'next/image';
+import { cookies, headers } from 'next/headers';
 
 export default function Home() {
   // В будущем тут будет проверка авторизации

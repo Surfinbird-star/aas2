@@ -41,10 +41,53 @@ export async function POST(request: NextRequest) {
     
     // Используем административный доступ для обхода RLS
     const supabaseAdmin = getSupabaseAdmin();
-    const { data, error } = await supabaseAdmin
+    
+    // Сначала проверяем, существует ли профиль с таким ID
+    const { data: existingProfile, error: checkError } = await supabaseAdmin
       .from('profiles')
-      .insert([profileData])
-      .select();
+      .select('*')
+      .eq('id', id)
+      .single();
+      
+    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = запись не найдена
+      console.error('API: Ошибка при проверке профиля:', checkError.message);
+      return NextResponse.json(
+        { error: checkError.message },
+        { status: 500 }
+      );
+    }
+    
+    let data, error;
+    
+    if (existingProfile) {
+      // Если профиль существует, обновляем его
+      console.log('API: Обновление существующего профиля');
+      const { data: updateData, error: updateError } = await supabaseAdmin
+        .from('profiles')
+        .update({
+          first_name,
+          last_name,
+          name,
+          email,
+          phone,
+          address: address || null
+        })
+        .eq('id', id)
+        .select();
+        
+      data = updateData;
+      error = updateError;
+    } else {
+      // Если профиля нет, создаем новый
+      console.log('API: Создание нового профиля');
+      const { data: insertData, error: insertError } = await supabaseAdmin
+        .from('profiles')
+        .insert([profileData])
+        .select();
+        
+      data = insertData;
+      error = insertError;
+    }
     
     if (error) {
       console.error('API: Ошибка при создании профиля:', error.message);

@@ -9,7 +9,6 @@ const nextConfig = {
   output: 'standalone',
   // Отключаем некоторые проверки для успешной сборки
   experimental: {
-    esmExternals: 'loose',
     // Эта опция повысит стабильность сборки при работе с CSS
     forceSwcTransforms: true,
   },

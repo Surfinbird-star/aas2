@@ -3,7 +3,7 @@ services:
     name: aas-food-app
     env: node
     buildCommand: chmod +x render-build.sh && ./render-build.sh
-    startCommand: npm run start
+    startCommand: node .next/standalone/server.js
     envVars:
       - key: NODE_ENV
         value: production

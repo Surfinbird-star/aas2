@@ -18,4 +18,9 @@ npm install --force
 echo "Сборка приложения..."
 npm run build
 
-echo "Сборка завершена!"
+# Подготовка standalone режима
+echo "Настройка standalone режима..."
+cp -r public .next/standalone/
+cp -r .next/static .next/standalone/.next/
+
+echo "Сборка завершена успешно!"

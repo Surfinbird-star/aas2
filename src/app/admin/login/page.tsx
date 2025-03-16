@@ -1,11 +1,20 @@
 'use client'
 
-import { useState, FormEvent } from 'react'
+import { useState, FormEvent, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 
 export default function AdminLoginPage() {
+  return (
+    <Suspense fallback={<div>Загрузка...</div>}>
+      <LoginContent />
+    </Suspense>
+  )
+}
+
+// Компонент, который использует useSearchParams
+function LoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [email, setEmail] = useState('')

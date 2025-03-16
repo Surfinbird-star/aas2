@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: aas-food-app
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        value: https://ocwfggbzcllddckfwxer.supabase.co
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jd2ZnZ2J6Y2xsZGRja2Z3eGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDExOTc2ODMsImV4cCI6MjA1Njc3MzY4M30.WGGIqJFp-IUVwFOF-29cMQ-4aBwqSEGtnauirsqgQ4c
+      - key: SUPABASE_SERVICE_KEY
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9jd2ZnZ2J6Y2xsZGRja2Z3eGVyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MTE5NzY4MywiZXhwIjoyMDU2NzczNjgzfQ.B-qOlDTKiIqgSy9UJeeDk7ey0GUD4mGh67781J-Zzdo

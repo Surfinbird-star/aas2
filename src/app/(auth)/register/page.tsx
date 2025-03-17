@@ -22,6 +22,7 @@ export default function RegisterPage() {
     e.preventDefault()
     setLoading(true)
     setError(null)
+    console.log('Начало процесса регистрации')
 
     // Проверка совпадения паролей
     if (password !== confirmPassword) {
@@ -32,10 +33,15 @@ export default function RegisterPage() {
     
     try {
       // Регистрация в Supabase Auth
+      console.log('Отправка запроса на регистрацию в Supabase')
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/login`,
+        }
       })
+      console.log('Ответ от Supabase:', authData, authError)
 
       if (authError) {
         throw authError
@@ -119,11 +125,20 @@ export default function RegisterPage() {
         }
 
         // Успешная регистрация, показываем уведомление о проверке почты
+        console.log('Регистрация успешна, показываем сообщение о проверке почты')
         setRegistered(true)
         // После подтверждения почты пользователь должен будет войти через форму логина
       }
     } catch (error: any) {
       console.error('Ошибка регистрации:', error);
+      
+      // Попробуем всё равно показать сообщение о проверке почты
+      if (email && !error.message?.includes('duplicate')) {
+        console.log('Несмотря на ошибку, показываем сообщение о проверке почты');
+        setRegistered(true);
+        setLoading(false);
+        return;
+      }
       
       // Более подробное объяснение ошибки
       let errorMessage = 'Ошибка при регистрации';

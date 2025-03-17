@@ -14,6 +14,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: isBrowser, // Сохраняем сессию только в браузере
     autoRefreshToken: true,
     storageKey: 'foodapp-auth' // Уникальный ключ хранения
+  },
+  global: {
+    fetch: fetch, // Используем глобальный fetch для стабильной работы на Render
   }
 });
 

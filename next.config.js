@@ -11,6 +11,24 @@ const nextConfig = {
   experimental: {
     // Эта опция повысит стабильность сборки при работе с CSS
     forceSwcTransforms: true,
+    // Включение серверных действий в режиме standalone
+    serverActions: {
+      allowedOrigins: ['aas2-twx0.onrender.com', 'localhost:3000'],
+    },
+  },
+  // Настройка заголовков для обхода CORS
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          { key: 'Access-Control-Allow-Credentials', value: 'true' },
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET,OPTIONS,PATCH,DELETE,POST,PUT' },
+          { key: 'Access-Control-Allow-Headers', value: 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version' },
+        ],
+      },
+    ];
   },
   // Принудительно игнорируем ошибки CSSа
   webpack: (config) => {

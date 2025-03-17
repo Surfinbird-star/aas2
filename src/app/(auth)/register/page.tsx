@@ -16,6 +16,7 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [registered, setRegistered] = useState(false)
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -117,8 +118,9 @@ export default function RegisterPage() {
           }
         }
 
-        // Успешная регистрация, перенаправление на страницу с товарами
-        router.push('/products')
+        // Успешная регистрация, показываем уведомление о проверке почты
+        setRegistered(true)
+        // После подтверждения почты пользователь должен будет войти через форму логина
       }
     } catch (error: any) {
       console.error('Ошибка регистрации:', error);
@@ -150,17 +152,33 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-50">
-      <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-blue-600">AAS</h1>
-          <p className="mt-2 text-gray-600">Регистрация в приложении</p>
-        </div>
-
-        {error && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">
-            {error}
+      {registered ? (
+        <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-blue-600">AAS</h1>
+            <p className="mt-2 text-gray-600">Регистрация успешна</p>
           </div>
-        )}
+          <div className="bg-green-50 text-green-700 p-6 rounded-md text-center space-y-4">
+            <h2 className="text-xl font-semibold">Регистрация успешна!</h2>
+            <p>Пожалуйста, проверьте вашу почту <strong>{email}</strong> и подтвердите регистрацию, перейдя по ссылке в письме.</p>
+            <p className="text-sm">После подтверждения почты вы сможете войти в систему.</p>
+            <Link href="/login" className="mt-4 inline-block py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+              Перейти к странице входа
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-blue-600">AAS</h1>
+            <p className="mt-2 text-gray-600">Регистрация в приложении</p>
+          </div>
+
+          {error && (
+            <div className="bg-red-50 text-red-600 p-3 rounded-md text-sm">
+              {error}
+            </div>
+          )}
 
         <form onSubmit={handleRegister} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -279,15 +297,16 @@ export default function RegisterPage() {
           </button>
         </form>
 
-        <div className="text-center mt-4">
-          <p className="text-sm text-gray-600">
-            Уже есть аккаунт?{' '}
-            <Link href="/login" className="text-blue-600 hover:text-blue-500">
-              Войти
-            </Link>
-          </p>
+          <div className="text-center mt-4">
+            <p className="text-sm text-gray-600">
+              Уже есть аккаунт?{' '}
+              <Link href="/login" className="text-blue-600 hover:text-blue-500">
+                Войти
+              </Link>
+            </p>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

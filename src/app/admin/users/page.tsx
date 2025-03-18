@@ -101,6 +101,8 @@ export default function AdminUsersPage() {
   // Просмотр документа
   const viewDocument = async (documentId: string) => {
     try {
+      console.log(`Загрузка документа с ID: ${documentId}`);
+      
       // Получаем содержимое документа
       const { data, error } = await supabase
         .from('user_documents')
@@ -109,18 +111,20 @@ export default function AdminUsersPage() {
         .single();
       
       if (error) {
+        console.error('Ошибка при загрузке документа из БД:', error);
         throw error;
       }
       
       // Проверяем, что content существует и является строкой
       if (!data.content || typeof data.content !== 'string') {
+        console.error('Содержимое документа отсутствует или не является строкой');
         throw new Error('Содержимое документа отсутствует или повреждено');
       }
       
-      // Обработка base64 для корректного отображения
-      let safeContent = data.content;
-      // Убедимся, что нет экранированных символов и некорректных символов
-      safeContent = safeContent.replace(/\\\\x/g, '').replace(/\\\\\\\\/g, '');
+      console.log(`Документ загружен: ${data.filename}, тип: ${data.mime_type}, размер: ${data.content.length} символов`);
+      
+      // НЕ выполняем никакой обработки данных - это может повредить бинарные форматы!
+      // Просто используем данные как есть
       
       setViewingDocument({
         id: documentId,
@@ -458,11 +462,34 @@ export default function AdminUsersPage() {
                     src={`data:${viewingDocument.mimeType};base64,${viewingDocument.content}`}
                     alt={viewingDocument.filename}
                     className="max-w-full max-h-[60vh] mx-auto border"
+                    onLoad={() => {
+                      console.log('Изображение успешно загружено:', viewingDocument.filename);
+                      // Сбрасываем ошибку, если она была установлена ранее
+                      if (error) setError(null);
+                    }}
                     onError={(e) => {
                       e.currentTarget.onerror = null;
-                      e.currentTarget.src = '/placeholder-image.png';
                       console.error('Ошибка загрузки изображения:', viewingDocument.filename);
-                      console.log('Содержимое base64 (первые 100 символов):', viewingDocument.content.substring(0, 100));
+                      console.log(`Тип MIME: ${viewingDocument.mimeType}, длина base64: ${viewingDocument.content.length}`);
+                      
+                      // Пробуем альтернативный формат загрузки для PNG
+                      if (viewingDocument.mimeType.includes('png')) {
+                        try {
+                          console.log('Пробуем альтернативный формат для PNG...');
+                          // Очищаем префикс data-URL если он уже есть
+                          let base64Data = viewingDocument.content;
+                          if (base64Data.includes(',')) {
+                            base64Data = base64Data.split(',')[1];
+                          }
+                          e.currentTarget.src = `data:image/png;base64,${base64Data}`;
+                          return;
+                        } catch (err) {
+                          console.error('Альтернативный метод не сработал:', err);
+                        }
+                      }
+                      
+                      // Если альтернативный метод не сработал или это не PNG
+                      e.currentTarget.src = '/placeholder-image.png';
                       setError('Не удалось загрузить изображение. Формат данных некорректен.');
                     }}
                   />

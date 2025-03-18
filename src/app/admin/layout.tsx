@@ -16,43 +16,79 @@ export default function AdminLayout({
   const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
-    // Упрощенная проверка авторизации администратора
-    const checkAuth = async () => {
+    // Проверяем наличие сохраненной информации о правах администратора
+    const checkAdminRights = async () => {
+      // Используем трай-кэтч для localStorage, чтобы избежать ошибок на сервере
+      let adminCheckStorage = null;
+      let adminSessionTime = null;
+      
       try {
-        // Проверяем сессию
-        const { data: { session } } = await supabase.auth.getSession()
+        if (typeof window !== 'undefined') {
+          adminCheckStorage = localStorage.getItem('admin_authenticated');
+          adminSessionTime = localStorage.getItem('admin_session_time');
+        }
+      } catch (e) {
+        console.error('Ошибка при доступе к localStorage:', e);
+      }
+      
+      // Если есть сохраненная информация о правах и она не старше 4 часов
+      if (adminCheckStorage === 'true' && adminSessionTime) {
+        const sessionTime = parseInt(adminSessionTime);
+        const currentTime = Date.now();
+        
+        // Проверяем, что сессия не старше 4 часов (14400000 мс)
+        if (currentTime - sessionTime < 14400000) {
+          console.log('Используем кэшированные права администратора');
+          setIsAdmin(true);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Если кэша нет или он устарел, выполняем проверку заново
+      try {
+        // 1. Проверяем сессию
+        const { data: { session } } = await supabase.auth.getSession();
         
         if (!session) {
-          setLoading(false)
-          router.push('/admin/login')
-          return
+          setLoading(false);
+          router.push('/admin/login');
+          return;
         }
         
-        // Просто загружаем информацию о пользователе без строгих проверок
-        const { data: profileData } = await supabase
+        // 2. Проверяем права администратора
+        const { data: profileData, error } = await supabase
           .from('profiles')
           .select('is_admin')
           .eq('id', session.user.id)
-          .single()
+          .single();
         
-        // Проверяем, является ли пользователь администратором
+        // Если пользователь админ, сохраняем это в state и localStorage
         if (profileData && profileData.is_admin) {
-          setIsAdmin(true)
+          setIsAdmin(true);
+          // Кэшируем права администратора
+          try {
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('admin_authenticated', 'true');
+              localStorage.setItem('admin_session_time', Date.now().toString());
+            }
+          } catch (e) {
+            console.error('Ошибка при сохранении в localStorage:', e);
+          }
         } else {
-          console.log('Пользователь не является администратором')
-          router.push('/admin/login?error=not_admin')
+          console.log('Пользователь не является администратором');
+          router.push('/admin/login?error=not_admin');
         }
         
-        setLoading(false)
-        
+        setLoading(false);
       } catch (error) {
-        console.error('Ошибка при проверке авторизации:', error)
-        setLoading(false)
-        router.push('/admin/login')
+        console.error('Ошибка при проверке прав администратора:', error);
+        setLoading(false);
+        router.push('/admin/login?error=unknown');
       }
-    }
+    };
 
-    checkAuth()
+    checkAdminRights()
   }, [router])
 
   // Функция для выхода из аккаунта

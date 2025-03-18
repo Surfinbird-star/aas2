@@ -272,18 +272,18 @@ export default function AdminOrdersPage() {
   // Непосредственное обновление товара в базе данных через SQL-функцию
   const updateOrderItem = async (itemId: string, orderId: string, newQuantity: number) => {
     try {
-      console.log(`Вызов SQL-функции admin_update_order_item для товара ${itemId} с новым количеством ${newQuantity}`);
+      console.log(`Вызов SQL-функции admin_update_order_item_text для товара ${itemId} с новым количеством ${newQuantity}`);
       
-      // Используем SQL-функцию, обходящую ограничения RLS
-      // Передаем itemId как строку, чтобы избежать ошибки с типом UUID
+      // Используем SQL-функцию с текстовым параметром, обходящую ограничения RLS
+      // Используем функцию admin_update_order_item_text для избежания конфликтов перегрузки функций
       const { data, error } = await supabase
-        .rpc('admin_update_order_item', { 
+        .rpc('admin_update_order_item_text', { 
           item_id: String(itemId), 
           new_quantity: newQuantity 
         })
       
       if (error) {
-        console.error(`Ошибка при вызове функции admin_update_order_item для товара ${itemId}:`, error);
+        console.error(`Ошибка при вызове функции admin_update_order_item_text для товара ${itemId}:`, error);
         throw error;
       }
       

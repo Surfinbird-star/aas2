@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { useAdminAuth } from '@/hooks/useAdminAuth'
@@ -12,23 +11,26 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode
 }) {
-  const router = useRouter()
   const { user, isAdmin, isLoading } = useAdminAuth()
   
   useEffect(() => {
     // Перенаправляем на страницу входа, если нет пользователя или не админ
     if (!isLoading && (!user || !isAdmin)) {
-      router.push('/admin/login' + (!user ? '' : '?error=not_admin'));
+      // Используем window.location вместо router для более надежной навигации
+      window.location.href = '/admin/login' + (!user ? '' : '?error=not_admin');
     }
-  }, [user, isAdmin, isLoading, router])
+  }, [user, isAdmin, isLoading])
 
   // Функция для выхода из аккаунта
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut()
-      router.push('/admin/login')
+      // Принудительно перенаправляем на страницу логина с полной перезагрузкой страницы
+      window.location.href = '/admin/login';
     } catch (error) {
       console.error('Ошибка при выходе из аккаунта:', error)
+      // В любом случае перенаправляем
+      window.location.href = '/admin/login';
     }
   }
 

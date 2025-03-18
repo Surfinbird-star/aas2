@@ -33,7 +33,7 @@ export default function AdminUsersPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [viewingDocument, setViewingDocument] = useState<{id: string, content: string, mimeType: string, filename: string} | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const [deletingDocId, setDeletingDocId] = useState<string | null>(null); // Отслеживаем ID документа, который в процессе удаления
   const [successMessage, setSuccessMessage] = useState<string>('');
   
   const router = useRouter();
@@ -136,16 +136,18 @@ export default function AdminUsersPage() {
   
   // Удаление документа
   const deleteDocument = async (documentId: string) => {
-    if (!selectedUser || deleting) return;
+    if (!selectedUser || deletingDocId) return;
     
     try {
-      setDeleting(true);
+      setDeletingDocId(documentId);
       setError(null);
       
+      // Добавляем фильтр по ID пользователя для дополнительной защиты
       const { error } = await supabase
         .from('user_documents')
         .delete()
-        .eq('id', documentId);
+        .eq('id', documentId)
+        .eq('user_id', selectedUser.id); // Добавляем проверку, чтобы гарантировать удаление конкретного документа
       
       if (error) {
         console.error('Error deleting document:', error);
@@ -187,7 +189,7 @@ export default function AdminUsersPage() {
       console.error('Error in document deletion:', err);
       setError(err instanceof Error ? err.message : 'Произошла ошибка при удалении документа');
     } finally {
-      setDeleting(false);
+      setDeletingDocId(null);
     }
   };
   
@@ -297,10 +299,10 @@ export default function AdminUsersPage() {
                             </button>
                             <button
                               onClick={() => deleteDocument(doc.id)}
-                              disabled={deleting}
+                              disabled={deletingDocId === doc.id}
                               className="px-3 py-1 bg-red-600 text-white hover:bg-red-700 rounded-md text-xs font-medium transition duration-200"
                             >
-                              {deleting ? 'Удаление...' : 'Удалить'}
+                              {deletingDocId === doc.id ? 'Удаление...' : 'Удалить'}
                             </button>
                           </div>
                         </td>

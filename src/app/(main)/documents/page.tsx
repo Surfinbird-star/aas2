@@ -17,7 +17,7 @@ interface UserDocument {
 export default function DocumentUploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [deletingDocId, setDeletingDocId] = useState<string | null>(null); // Отслеживаем ID документа, который в процессе удаления
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState(false);
   const [userDocuments, setUserDocuments] = useState<UserDocument[]>([]);
@@ -87,10 +87,10 @@ export default function DocumentUploadPage() {
 
   // Обработчик удаления документа
   const handleDeleteDocument = async (documentId: string) => {
-    if (!user || deleting) return;
+    if (!user || deletingDocId) return;
     
     try {
-      setDeleting(true);
+      setDeletingDocId(documentId);
       setError('');
       
       const { error } = await supabase
@@ -116,7 +116,7 @@ export default function DocumentUploadPage() {
       console.error('Error in delete operation:', err);
       setError('Произошла ошибка при удалении документа. Пожалуйста, попробуйте еще раз.');
     } finally {
-      setDeleting(false);
+      setDeletingDocId(null);
     }
   };
 
@@ -266,10 +266,10 @@ export default function DocumentUploadPage() {
                       <td className="py-3 px-4">
                         <button
                           onClick={() => handleDeleteDocument(doc.id)}
-                          disabled={deleting}
+                          disabled={deletingDocId === doc.id}
                           className="px-3 py-1 bg-red-600 text-white hover:bg-red-700 rounded-md text-xs font-medium transition duration-200"
                         >
-                          {deleting ? 'Удаление...' : 'Удалить'}
+                          {deletingDocId === doc.id ? 'Удаление...' : 'Удалить'}
                         </button>
                       </td>
                     </tr>

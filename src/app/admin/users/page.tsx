@@ -244,16 +244,16 @@ export default function AdminUsersPage() {
             <h3 className="text-lg font-medium mb-3 text-gray-700">Информация о пользователе:</h3>
             <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-md border border-gray-200 admin-user-info">
               <div>
-                <p><span className="font-semibold">ID:</span> {selectedUser.id}</p>
-                <p><span className="font-semibold">Email:</span> {selectedUser.email}</p>
-                <p><span className="font-semibold">Имя:</span> {selectedUser.first_name || 'Не указано'}</p>
-                <p><span className="font-semibold">Фамилия:</span> {selectedUser.last_name || 'Не указано'}</p>
-                <p><span className="font-semibold">Телефон:</span> {selectedUser.phone || 'Не указан'}</p>
+                <p><span className="font-medium">ID:</span> {selectedUser.id}</p>
+                <p><span className="font-medium">Email:</span> {selectedUser.email}</p>
+                <p><span className="font-medium">Имя:</span> {selectedUser.first_name || 'Не указано'}</p>
+                <p><span className="font-medium">Фамилия:</span> {selectedUser.last_name || 'Не указано'}</p>
+                <p><span className="font-medium">Телефон:</span> {selectedUser.phone || 'Не указан'}</p>
               </div>
               <div>
-                <p><span className="font-semibold">Роль:</span> {selectedUser.is_admin ? 'Администратор' : 'Пользователь'}</p>
-                <p><span className="font-semibold">Адрес:</span> {selectedUser.address || 'Не указан'}</p>
-                <p><span className="font-semibold">Дата регистрации:</span> {new Date(selectedUser.created_at).toLocaleString('ru-RU')}</p>
+                <p><span className="font-medium">Роль:</span> <span className={`px-2 py-1 inline-flex text-xs leading-5 font-medium rounded-full ${selectedUser.is_admin ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>{selectedUser.is_admin ? 'Администратор' : 'Пользователь'}</span></p>
+                <p><span className="font-medium">Адрес:</span> {selectedUser.address || 'Не указан'}</p>
+                <p><span className="font-medium">Дата регистрации:</span> {new Date(selectedUser.created_at).toLocaleString('ru-RU')}</p>
               </div>
             </div>
           </div>
@@ -273,11 +273,11 @@ export default function AdminUsersPage() {
                 <table className="min-w-full bg-white">
                   <thead className="bg-gray-100">
                     <tr>
-                      <th className="py-3 px-4 text-left font-semibold">Имя файла</th>
-                      <th className="py-3 px-4 text-left font-semibold">Тип</th>
-                      <th className="py-3 px-4 text-left font-semibold">Размер</th>
-                      <th className="py-3 px-4 text-left font-semibold">Дата загрузки</th>
-                      <th className="py-3 px-4 text-left font-semibold">Действия</th>
+                      <th className="py-3 px-4 text-left font-medium text-xs uppercase tracking-wider">Имя файла</th>
+                      <th className="py-3 px-4 text-left font-medium text-xs uppercase tracking-wider">Тип</th>
+                      <th className="py-3 px-4 text-left font-medium text-xs uppercase tracking-wider">Размер</th>
+                      <th className="py-3 px-4 text-left font-medium text-xs uppercase tracking-wider">Дата загрузки</th>
+                      <th className="py-3 px-4 text-left font-medium text-xs uppercase tracking-wider">Действия</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -343,7 +343,7 @@ export default function AdminUsersPage() {
                     <div className="text-sm text-gray-500">{new Date(user.created_at).toLocaleString('ru-RU')}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${user.is_admin ? 'bg-blue-600 text-white' : 'bg-green-100 text-green-800'}`}>
+                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-medium rounded-full ${user.is_admin ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
                       {user.is_admin ? 'Админ' : 'Пользователь'}
                     </span>
                   </td>

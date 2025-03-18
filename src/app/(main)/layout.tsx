@@ -77,19 +77,10 @@ export default function MainLayout({
       <Navbar />
       <main className="flex-grow container mx-auto px-4 py-6">
         {profile && (
-          <div className="mb-4 bg-blue-50 p-3 rounded-md border border-blue-100 flex justify-between items-center">
+          <div className="mb-4 bg-blue-50 p-3 rounded-md border border-blue-100 text-center">
             <p className="text-blue-800">
               Здравствуйте, <span className="font-semibold">{profile.first_name} {profile.last_name}</span>! Добро пожаловать в сервис AAS.
             </p>
-            <button 
-              onClick={handleLogout} 
-              className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md font-medium text-sm transition duration-200 flex items-center"
-            >
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-              Выйти
-            </button>
           </div>
         )}
         {children}

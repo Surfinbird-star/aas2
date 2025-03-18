@@ -278,6 +278,7 @@ export default function AdminOrdersPage() {
     
     try {
       setSavingQuantities(true)
+      console.log('Начинаем сохранение изменений для заказа:', orderId);
       
       // Получаем все изменения для этого заказа
       const itemUpdates = orderItemsToUpdate[orderId]
@@ -285,15 +286,20 @@ export default function AdminOrdersPage() {
       // Для каждого изменения делаем обновление в базе данных
       const updatePromises = Object.keys(itemUpdates).map(async (itemId) => {
         const newQuantity = itemUpdates[itemId]
+        console.log(`Обновляем товар ID=${itemId} в заказе ${orderId}, новое количество: ${newQuantity}`);
         
+        // Используем createClient для создания нового клиента Supabase с ключами из .env файла
         const { error } = await supabase
           .from('order_items')
           .update({ quantity: newQuantity })
           .eq('id', itemId)
-          .eq('order_id', orderId)
         
-        if (error) throw error
+        if (error) {
+          console.error(`Ошибка при обновлении товара ${itemId}:`, error);
+          throw error;
+        }
         
+        console.log(`Товар ID=${itemId} успешно обновлен`);
         return { itemId, newQuantity }
       })
       

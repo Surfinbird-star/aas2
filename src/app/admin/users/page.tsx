@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
-import Link from 'next/link';
 
 interface UserDocument {
   id: string;
@@ -80,9 +79,9 @@ export default function AdminUsersPage() {
         });
         
         setUsers(usersWithDocuments);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error loading users:', err);
-        setError(err.message || 'Ошибка при загрузке пользователей');
+        setError(err instanceof Error ? err.message : 'Ошибка при загрузке пользователей');
       } finally {
         setLoading(false);
       }
@@ -115,7 +114,7 @@ export default function AdminUsersPage() {
       // Обработка base64 для корректного отображения
       let safeContent = data.content;
       // Убедимся, что нет экранированных символов и некорректных символов
-      safeContent = safeContent.replace(/\\x/g, '').replace(/\\\\/g, '');
+      safeContent = safeContent.replace(/\\\\x/g, '').replace(/\\\\\\\\/g, '');
       
       setViewingDocument({
         id: documentId,
@@ -123,9 +122,9 @@ export default function AdminUsersPage() {
         mimeType: data.mime_type,
         filename: data.filename
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error loading document:', err);
-      setError(err.message || 'Ошибка при загрузке документа');
+      setError(err instanceof Error ? err.message : 'Ошибка при загрузке документа');
     }
   };
   

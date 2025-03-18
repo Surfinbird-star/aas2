@@ -51,12 +51,29 @@ export default function DocumentUploadPage() {
     try {
       setUploading(true);
       
-      // Чтение файла как ArrayBuffer
-      const arrayBuffer = await file.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
+      // Используем FileReader для безопасного преобразования в base64
+      const reader = new FileReader();
       
-      // Преобразование в base64 для хранения в Supabase
-      const base64String = btoa(String.fromCharCode(...uint8Array));
+      // Создаем промис для ожидания загрузки файла
+      const readFileAsDataURL = new Promise<string>((resolve, reject) => {
+        reader.onload = () => {
+          // reader.result содержит строку с данными в формате data:URL
+          // нам нужно удалить префикс, чтобы получить чистый base64
+          const base64 = typeof reader.result === 'string' 
+            ? reader.result.split(',')[1] 
+            : '';
+          resolve(base64);
+        };
+        reader.onerror = () => {
+          reject(new Error('Ошибка чтения файла'));
+        };
+      });
+      
+      // Запускаем чтение файла в формате base64
+      reader.readAsDataURL(file);
+      
+      // Ждем завершения чтения и получаем base64 строку
+      const base64String = await readFileAsDataURL;
       
       // Загрузка файла в базу данных
       const { error } = await supabase

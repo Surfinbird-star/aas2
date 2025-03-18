@@ -1,9 +1,8 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { useAdminAuth } from '@/hooks/useAdminAuth'
 import './admin.css'
 
 export default function AdminLayout({
@@ -11,41 +10,73 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { user, isAdmin, isLoading } = useAdminAuth()
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   
   useEffect(() => {
-    // Перенаправляем на страницу входа, если нет пользователя или не админ
-    if (!isLoading && (!user || !isAdmin)) {
-      // Используем window.location вместо router для более надежной навигации
-      window.location.href = '/admin/login' + (!user ? '' : '?error=not_admin');
+    // Проверяем, авторизован ли администратор (один раз при загрузке страницы)
+    if (typeof window !== 'undefined') {
+      const isAdminAuthenticated = sessionStorage.getItem('admin_authenticated') === 'true';
+      
+      if (isAdminAuthenticated) {
+        setIsAuthenticated(true);
+        return;
+      }
+      
+      // Если нет информации в sessionStorage, проверяем сессию Supabase
+      const checkAdmin = async () => {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          if (!session) {
+            window.location.href = '/admin/login';
+            return;
+          }
+          
+          // Проверяем права администратора
+          const { data } = await supabase
+            .from('profiles')
+            .select('is_admin')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (data && data.is_admin) {
+            // Сохраняем статус в sessionStorage
+            sessionStorage.setItem('admin_authenticated', 'true');
+            setIsAuthenticated(true);
+          } else {
+            window.location.href = '/admin/login?error=not_admin';
+          }
+        } catch (error) {
+          console.error('Ошибка при проверке сессии:', error);
+          window.location.href = '/admin/login';
+        }
+      };
+      
+      checkAdmin();
     }
-  }, [user, isAdmin, isLoading])
+  }, [])
 
   // Функция для выхода из аккаунта
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut()
-      // Принудительно перенаправляем на страницу логина с полной перезагрузкой страницы
+      // Удаляем информацию об авторизации
+      sessionStorage.removeItem('admin_authenticated');
+      await supabase.auth.signOut();
       window.location.href = '/admin/login';
     } catch (error) {
-      console.error('Ошибка при выходе из аккаунта:', error)
-      // В любом случае перенаправляем
+      console.error('Ошибка при выходе из аккаунта:', error);
+      sessionStorage.removeItem('admin_authenticated');
       window.location.href = '/admin/login';
     }
   }
 
-  // Если идет проверка авторизации, показываем загрузку
-  if (isLoading) {
+  // Показываем загрузку, пока не завершена проверка авторизации
+  if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex justify-center items-center bg-gray-100">
         <div className="text-gray-500">Проверка доступа...</div>
       </div>
     );
-  }
-  
-  // Если нет пользователя или он не админ, не показываем содержимое
-  if (!user || !isAdmin) {
-    return null;
   }
 
   // Если пользователь админ, показываем интерфейс администратора

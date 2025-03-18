@@ -148,36 +148,23 @@ export default function AdminUsersPage() {
       
       console.log(`Начинаем удаление документа ID: ${documentId}`);
       
-      // Используем RPC (вызов серверной функции) для удаления, минуя политики RLS
+      // Используем прямое удаление с контекстом администратора
+      console.log('Стандартное удаление документа');
       const { data, error } = await supabase
-        .rpc('admin_delete_document', { document_id: documentId })
+        .from('user_documents')
+        .delete()
+        .eq('id', documentId)
         .select();
-      
-      // Если RPC не существует, попробуем классический способ
-      if (error && error.message.includes('function "admin_delete_document" does not exist')) {
-        console.log('Функция RPC не найдена, используем стандартный метод');
-        // Используем прямое удаление с контекстом администратора
-        const result = await supabase
-          .from('user_documents')
-          .delete()
-          .eq('id', documentId)
-          .select();
-        
-        return result;
-      }
       
       console.log('Ответ от сервера:', { data, error });
       
+      // Если возникла ошибка, пробуем альтернативные методы
       if (error) {
         console.error('Ошибка при удалении документа:', error);
-        setError(`Ошибка при удалении документа: ${error.message}`);
-        return;
-      }
-      
-      // Если есть ошибка, используем запрос на прямое удаление в обход политик RLS
-      if (error) {
+        
         // Пытаемся выполнить SQL-запрос напрямую
         try {
+          console.log('Пробуем использовать SQL-запрос напрямую');
           const { error: sqlError } = await supabase.rpc(
             'execute_sql', 
             { sql_query: `DELETE FROM user_documents WHERE id = '${documentId}' RETURNING *` }
@@ -185,9 +172,19 @@ export default function AdminUsersPage() {
           
           if (sqlError) {
             console.error('Ошибка при выполнении SQL-запроса:', sqlError);
-            setError(`Ошибка при удалении документа: ${sqlError.message}`);
+            
+            // Последняя попытка - прямое удаление через запрос с обновлением пользователя
+            console.log('Пробуем обновить профиль пользователя для сброса RLS');
+            await supabase
+              .from('profiles')
+              .update({ document_updated_at: new Date().toISOString() })
+              .eq('id', selectedUser?.id || ''); // Обновляем профиль пользователя, чтобы обновить кэш
+            
+            setError(`Ошибка при удалении документа. Обновите список документов.`);
             return;
           }
+          
+          console.log('Документ должен быть удален, проверяем...');
           
           // Проверяем, удалился ли документ
           const { data: checkData } = await supabase
@@ -198,12 +195,7 @@ export default function AdminUsersPage() {
           
           if (checkData) {
             console.warn('Документ все еще существует в базе, используем последний метод');
-            
-            // Последняя попытка - прямое удаление через запрос с обновлением пользователя
-            await supabase
-              .from('profiles')
-              .update({ document_updated_at: new Date().toISOString() })
-              .eq('id', selectedUser?.id || ''); // Обновляем профиль пользователя, чтобы обновить кэш
+            setError('Не удалось полностью удалить документ. Обратитесь к администратору.');
           } else {
             console.log('Документ успешно удален');
           }

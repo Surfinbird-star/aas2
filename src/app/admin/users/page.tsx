@@ -33,6 +33,8 @@ export default function AdminUsersPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [viewingDocument, setViewingDocument] = useState<{id: string, content: string, mimeType: string, filename: string} | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string>('');
   
   const router = useRouter();
   const { user, isAdmin, isLoading } = useAuth();
@@ -132,6 +134,63 @@ export default function AdminUsersPage() {
     }
   };
   
+  // Удаление документа
+  const deleteDocument = async (documentId: string) => {
+    if (!selectedUser || deleting) return;
+    
+    try {
+      setDeleting(true);
+      setError(null);
+      
+      const { error } = await supabase
+        .from('user_documents')
+        .delete()
+        .eq('id', documentId);
+      
+      if (error) {
+        console.error('Error deleting document:', error);
+        setError(`Ошибка при удалении документа: ${error.message}`);
+        return;
+      }
+      
+      // Обновляем список документов пользователя
+      if (selectedUser && selectedUser.documents) {
+        const updatedDocuments = selectedUser.documents.filter(doc => doc.id !== documentId);
+        
+        // Обновляем выбранного пользователя
+        setSelectedUser({
+          ...selectedUser,
+          documents: updatedDocuments
+        });
+        
+        // Обновляем список всех пользователей
+        setUsers(users.map(user => {
+          if (user.id === selectedUser.id) {
+            return {
+              ...user,
+              documents: updatedDocuments
+            };
+          }
+          return user;
+        }));
+      }
+      
+      // Показываем сообщение об успехе
+      setSuccessMessage('Документ успешно удален');
+      
+      // Скрываем сообщение через 3 секунды
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 3000);
+      
+    } catch (err: unknown) {
+      console.error('Error in document deletion:', err);
+      setError(err instanceof Error ? err.message : 'Произошла ошибка при удалении документа');
+    } finally {
+      setDeleting(false);
+    }
+  };
+  
   // Закрыть просмотр документа
   const closeDocumentView = () => {
     setViewingDocument(null);
@@ -201,6 +260,14 @@ export default function AdminUsersPage() {
           
           <div className="user-documents-list">
             <h3 className="text-lg font-medium mb-3 text-gray-700">Документы пользователя:</h3>
+            
+            {/* Сообщение об успешном удалении */}
+            {successMessage && (
+              <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+                {successMessage}
+              </div>
+            )}
+            
             {selectedUser.documents && selectedUser.documents.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="min-w-full bg-white">
@@ -221,12 +288,21 @@ export default function AdminUsersPage() {
                         <td className="py-3 px-4">{Math.round(doc.file_size / 1024)} KB</td>
                         <td className="py-3 px-4">{new Date(doc.created_at).toLocaleString('ru-RU')}</td>
                         <td className="py-3 px-4">
-                          <button
-                            onClick={() => viewDocument(doc.id)}
-                            className="px-3 py-1 bg-gray-600 text-white hover:bg-gray-700 rounded-md text-xs font-medium transition duration-200"
-                          >
-                            Просмотреть
-                          </button>
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => viewDocument(doc.id)}
+                              className="px-3 py-1 bg-gray-600 text-white hover:bg-gray-700 rounded-md text-xs font-medium transition duration-200"
+                            >
+                              Просмотреть
+                            </button>
+                            <button
+                              onClick={() => deleteDocument(doc.id)}
+                              disabled={deleting}
+                              className="px-3 py-1 bg-red-600 text-white hover:bg-red-700 rounded-md text-xs font-medium transition duration-200"
+                            >
+                              {deleting ? 'Удаление...' : 'Удалить'}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}

@@ -124,7 +124,7 @@ export default function AdminUsersPage() {
       
       setViewingDocument({
         id: documentId,
-        content: safeContent,
+        content: data.content, // Используем оригинальные данные без обработки
         mimeType: data.mime_type,
         filename: data.filename
       });
@@ -159,9 +159,22 @@ export default function AdminUsersPage() {
         return;
       }
       
-      // Проверяем, были ли удалены записи
+      // Пустой массив данных и отсутствие ошибки означает, что запись либо успешно удалена, либо не существовала
       if (!data || data.length === 0) {
-        console.warn('Документ не был удален из базы данных');
+        // Проверяем, есть ли документ с таким ID в базе
+        const { data: checkData } = await supabase
+          .from('user_documents')
+          .select('id')
+          .eq('id', documentId)
+          .maybeSingle();
+        
+        if (checkData) {
+          console.warn('Документ все еще существует в базе');
+          // Документ все еще существует, значит удаление не сработало
+        } else {
+          console.log('Документ удален или не существует в базе - считаем это успехом');
+          // Документа нет в базе, все в порядке
+        }
       } else {
         console.log('Документ успешно удален из базы:', data);
       }
@@ -402,6 +415,7 @@ export default function AdminUsersPage() {
                       e.currentTarget.onerror = null;
                       e.currentTarget.src = '/placeholder-image.png';
                       console.error('Ошибка загрузки изображения:', viewingDocument.filename);
+                      console.log('Содержимое base64 (первые 100 символов):', viewingDocument.content.substring(0, 100));
                       setError('Не удалось загрузить изображение. Формат данных некорректен.');
                     }}
                   />

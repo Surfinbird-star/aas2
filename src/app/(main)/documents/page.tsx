@@ -110,17 +110,22 @@ export default function DocumentUploadPage() {
         return;
       }
       
-      // Проверяем, были ли удалены записи
+      // Пустой массив данных и отсутствие ошибки означает, что запись либо успешно удалена, либо не существовала
       if (!data || data.length === 0) {
-        console.warn('Документ не был удален из базы данных');
-        // Дополнительная попытка удаления без фильтрации
-        const retryResult = await supabase
+        // Проверяем, есть ли документ с таким ID в базе
+        const { data: checkData } = await supabase
           .from('user_documents')
-          .delete()
+          .select('id')
           .eq('id', documentId)
-          .select();
+          .maybeSingle();
         
-        console.log('Результат повторной попытки:', retryResult);
+        if (checkData) {
+          console.warn('Документ все еще существует в базе');
+          // Документ все еще существует, значит удаление не сработало 
+        } else {
+          console.log('Документ удален или не существует в базе - считаем это успехом');
+          // Документа нет в базе, все в порядке
+        }
       } else {
         console.log('Документ успешно удален из базы:', data);
       }

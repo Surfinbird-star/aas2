@@ -282,7 +282,7 @@ export default function AdminUsersPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <h1 className="text-2xl font-bold text-gray-800 mb-8">Управление пользователями</h1>
+      <h1 className="text-2xl text-gray-800 mb-8">Управление пользователями</h1>
       
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
@@ -298,41 +298,58 @@ export default function AdminUsersPage() {
         // Отображение информации о выбранном пользователе и его документах
         <div className="bg-white rounded-lg shadow-md p-6 admin-panel">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-medium text-gray-800">
+            <h2 className="text-xl text-gray-800">
               Пользователь: {selectedUser.first_name} {selectedUser.last_name} ({selectedUser.email})
             </h2>
             <button
               onClick={backToUserList}
-              className="px-4 py-2 bg-gray-600 text-white hover:bg-gray-700 rounded-md text-sm font-medium transition duration-200"
+              className="px-4 py-2 bg-gray-500 text-white hover:bg-gray-600 rounded text-sm transition duration-200"
             >
               Назад к списку
             </button>
           </div>
           
           <div className="mb-6">
-            <h3 className="text-lg font-medium mb-3 text-gray-700">Информация о пользователе:</h3>
-            <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-md border border-gray-200 admin-user-info">
-              <div>
-                <p><span className="font-medium">ID:</span> {selectedUser.id}</p>
-                <p><span className="font-medium">Email:</span> {selectedUser.email}</p>
-                <p><span className="font-medium">Имя:</span> {selectedUser.first_name || 'Не указано'}</p>
-                <p><span className="font-medium">Фамилия:</span> {selectedUser.last_name || 'Не указано'}</p>
-                <p><span className="font-medium">Телефон:</span> {selectedUser.phone || 'Не указан'}</p>
-              </div>
-              <div>
-                <p><span className="font-medium">Роль:</span> <span className={`px-2 py-1 inline-flex text-xs leading-5 font-medium rounded-full ${selectedUser.is_admin ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>{selectedUser.is_admin ? 'Администратор' : 'Пользователь'}</span></p>
-                <p><span className="font-medium">Адрес:</span> {selectedUser.address || 'Не указан'}</p>
-                <p><span className="font-medium">Дата регистрации:</span> {new Date(selectedUser.created_at).toLocaleString('ru-RU')}</p>
-              </div>
+            <h3 className="text-lg mb-3 text-gray-700">Информация о пользователе:</h3>
+            <div className="bg-gray-50 p-4 rounded-md border border-gray-200 admin-user-info">
+              <dl className="grid grid-cols-2 gap-y-3">
+                <dt className="text-gray-500 text-sm">ID:</dt>
+                <dd>{selectedUser.id}</dd>
+                
+                <dt className="text-gray-500 text-sm">Email:</dt>
+                <dd>{selectedUser.email}</dd>
+                
+                <dt className="text-gray-500 text-sm">Имя:</dt>
+                <dd>{selectedUser.first_name || 'Не указано'}</dd>
+                
+                <dt className="text-gray-500 text-sm">Фамилия:</dt>
+                <dd>{selectedUser.last_name || 'Не указано'}</dd>
+                
+                <dt className="text-gray-500 text-sm">Телефон:</dt>
+                <dd>{selectedUser.phone || 'Не указан'}</dd>
+                
+                <dt className="text-gray-500 text-sm">Роль:</dt>
+                <dd>
+                  <span className={`px-2 py-1 inline-flex text-xs leading-5 rounded ${selectedUser.is_admin ? 'bg-gray-200 text-gray-800' : 'bg-gray-100 text-gray-700'}`}>
+                    {selectedUser.is_admin ? 'Администратор' : 'Пользователь'}
+                  </span>
+                </dd>
+                
+                <dt className="text-gray-500 text-sm">Адрес:</dt>
+                <dd>{selectedUser.address || 'Не указан'}</dd>
+                
+                <dt className="text-gray-500 text-sm">Дата регистрации:</dt>
+                <dd>{new Date(selectedUser.created_at).toLocaleString('ru-RU')}</dd>
+              </dl>
             </div>
           </div>
           
           <div className="user-documents-list">
-            <h3 className="text-lg font-medium mb-3 text-gray-700">Документы пользователя:</h3>
+            <h3 className="text-lg mb-3 text-gray-700">Документы пользователя:</h3>
             
             {/* Сообщение об успешном удалении */}
             {successMessage && (
-              <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+              <div className="bg-gray-100 border border-gray-300 text-gray-700 px-4 py-3 rounded mb-4">
                 {successMessage}
               </div>
             )}
@@ -340,13 +357,13 @@ export default function AdminUsersPage() {
             {selectedUser.documents && selectedUser.documents.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="min-w-full bg-white">
-                  <thead className="bg-gray-100">
+                  <thead className="bg-gray-50 border-b border-gray-300">
                     <tr>
-                      <th className="py-3 px-4 text-left font-medium text-xs uppercase tracking-wider">Имя файла</th>
-                      <th className="py-3 px-4 text-left font-medium text-xs uppercase tracking-wider">Тип</th>
-                      <th className="py-3 px-4 text-left font-medium text-xs uppercase tracking-wider">Размер</th>
-                      <th className="py-3 px-4 text-left font-medium text-xs uppercase tracking-wider">Дата загрузки</th>
-                      <th className="py-3 px-4 text-left font-medium text-xs uppercase tracking-wider">Действия</th>
+                      <th className="py-3 px-4 text-left text-xs text-gray-500 uppercase tracking-wider">Имя файла</th>
+                      <th className="py-3 px-4 text-left text-xs text-gray-500 uppercase tracking-wider">Тип</th>
+                      <th className="py-3 px-4 text-left text-xs text-gray-500 uppercase tracking-wider">Размер</th>
+                      <th className="py-3 px-4 text-left text-xs text-gray-500 uppercase tracking-wider">Дата загрузки</th>
+                      <th className="py-3 px-4 text-left text-xs text-gray-500 uppercase tracking-wider">Действия</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -360,14 +377,14 @@ export default function AdminUsersPage() {
                           <div className="flex space-x-2">
                             <button
                               onClick={() => viewDocument(doc.id)}
-                              className="px-3 py-1 bg-gray-600 text-white hover:bg-gray-700 rounded-md text-xs font-medium transition duration-200"
+                              className="px-3 py-1 bg-gray-500 text-white hover:bg-gray-600 rounded text-xs transition duration-200"
                             >
                               Просмотреть
                             </button>
                             <button
                               onClick={() => deleteDocument(doc.id)}
                               disabled={deletingDocId === doc.id}
-                              className="px-3 py-1 bg-red-600 text-white hover:bg-red-700 rounded-md text-xs font-medium transition duration-200"
+                              className="px-3 py-1 bg-gray-700 text-white hover:bg-gray-800 rounded text-xs transition duration-200"
                             >
                               {deletingDocId === doc.id ? 'Удаление...' : 'Удалить'}
                             </button>
@@ -379,7 +396,7 @@ export default function AdminUsersPage() {
                 </table>
               </div>
             ) : (
-              <div className="bg-gray-50 p-4 rounded text-center">
+              <div className="bg-gray-50 border border-gray-200 p-4 rounded text-center text-gray-500">
                 У пользователя нет загруженных документов
               </div>
             )}

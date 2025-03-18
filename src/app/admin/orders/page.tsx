@@ -212,14 +212,42 @@ export default function AdminOrdersPage() {
 
   // Обработка изменения количества товара
   const handleQuantityChange = (orderId: string, itemId: string, newQuantity: number) => {
-    // Сохраняем изменения в локальном состоянии
+    // Находим текущее количество товара
+    const currentOrder = orders.find(order => order.id === orderId);
+    const currentItem = currentOrder?.items.find(item => item.id === itemId);
+    const originalQuantity = currentItem?.quantity || 0;
+    
+    // Сохраняем изменения в локальном состоянии только если значение изменилось
     setEditedQuantities(prev => ({
       ...prev,
       [itemId]: newQuantity
     }))
     
-    // Добавляем в список товаров для обновления
+    // Обновляем список товаров для изменения
     setOrderItemsToUpdate(prev => {
+      // Если значение такое же, как оригинальное - удаляем из списка на обновление
+      if (newQuantity === originalQuantity) {
+        // Если для этого заказа уже есть записи
+        if (prev[orderId]) {
+          const updatedItems = { ...prev[orderId] };
+          delete updatedItems[itemId]; // Удаляем этот товар из списка на обновление
+          
+          // Если в заказе не осталось товаров для обновления, удаляем весь заказ
+          if (Object.keys(updatedItems).length === 0) {
+            const newOrdersToUpdate = { ...prev };
+            delete newOrdersToUpdate[orderId];
+            return newOrdersToUpdate;
+          }
+          
+          // Возвращаем обновленный список товаров для этого заказа
+          return {
+            ...prev,
+            [orderId]: updatedItems
+          };
+        }
+        return prev; // Ничего не меняем, если заказа еще нет в списке
+      }
+      
       // Если для этого заказа еще нет записей - создаем новый объект
       if (!prev[orderId]) {
         return {
@@ -237,12 +265,15 @@ export default function AdminOrdersPage() {
         }
       }
     })
+    
+    console.log('Изменения для сохранения:', orderItemsToUpdate);
   }
   
   // Сохранение всех изменений количества товаров в заказе
   const saveOrderChanges = async (orderId: string) => {
     if (!orderItemsToUpdate[orderId] || Object.keys(orderItemsToUpdate[orderId]).length === 0) {
-      return // Нет изменений для сохранения
+      alert('Нет изменений для сохранения');
+      return;
     }
     
     try {
@@ -517,7 +548,7 @@ export default function AdminOrdersPage() {
                             <div className="bg-gray-50 p-4 rounded-lg">
                               <div className="flex justify-between items-center mb-2">
                                 <h4 className="font-medium text-gray-900">Товары в заказе</h4>
-                                {Object.keys(orderItemsToUpdate).includes(order.id) && (
+                                {(orderItemsToUpdate[order.id] && Object.keys(orderItemsToUpdate[order.id]).length > 0) && (
                                   <button
                                     onClick={() => saveOrderChanges(order.id)}
                                     disabled={savingQuantities}
@@ -554,7 +585,7 @@ export default function AdminOrdersPage() {
                                           min="1"
                                           value={editedQuantities[item.id] !== undefined ? editedQuantities[item.id] : item.quantity} 
                                           onChange={(e) => {
-                                            const newValue = parseInt(e.target.value, 10) || 1;
+                                            const newValue = Math.max(parseInt(e.target.value, 10) || 1, 1);
                                             handleQuantityChange(order.id, item.id, newValue);
                                           }}
                                           className="w-16 px-2 py-1 text-sm border border-gray-300 rounded mr-2"

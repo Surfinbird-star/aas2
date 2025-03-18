@@ -1,8 +1,10 @@
-'use client';
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/hooks/useAuth';
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
+import React from 'react'
 
 interface UserDocument {
   id: string;
@@ -150,9 +152,7 @@ export default function AdminUsersPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <nav className="mb-8">
-        <h1 className="text-2xl font-bold">Управление пользователями</h1>
-      </nav>
+      <h1 className="text-2xl font-bold mb-8">Управление пользователями</h1>
       
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
@@ -173,7 +173,7 @@ export default function AdminUsersPage() {
             </h2>
             <button
               onClick={backToUserList}
-              className="py-2 px-4 bg-gray-200 rounded hover:bg-gray-300"
+              className="px-3 py-1 bg-gray-200 text-gray-800 hover:bg-gray-300 rounded-md text-xs font-medium"
             >
               Назад к списку
             </button>
@@ -219,7 +219,7 @@ export default function AdminUsersPage() {
                         <td className="py-3 px-4">
                           <button
                             onClick={() => viewDocument(doc.id)}
-                            className="py-1 px-3 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                            className="px-3 py-1 bg-blue-100 text-blue-800 hover:bg-blue-200 rounded-md text-xs font-medium"
                           >
                             Просмотреть
                           </button>
@@ -238,30 +238,41 @@ export default function AdminUsersPage() {
         </div>
       ) : (
         // Список всех пользователей
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <table className="min-w-full">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="py-3 px-4 text-left font-semibold">Email</th>
-                <th className="py-3 px-4 text-left font-semibold">Имя</th>
-                <th className="py-3 px-4 text-left font-semibold">Дата регистрации</th>
-                <th className="py-3 px-4 text-left font-semibold">Роль</th>
-                <th className="py-3 px-4 text-left font-semibold">Документы</th>
-                <th className="py-3 px-4 text-left font-semibold">Действия</th>
+        <div className="bg-white rounded-lg shadow-md overflow-hidden admin-panel">
+          <div className="py-4 px-6">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead>
+                <tr>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Имя</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Дата регистрации</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Роль</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Документы</th>
+                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
               </tr>
             </thead>
             <tbody>
               {users.map((user) => (
-                <tr key={user.id} className="border-t hover:bg-gray-50">
-                  <td className="py-3 px-4">{user.email}</td>
-                  <td className="py-3 px-4">{`${user.first_name || ''} ${user.last_name || ''}`}</td>
-                  <td className="py-3 px-4">{new Date(user.created_at).toLocaleDateString('ru-RU')}</td>
-                  <td className="py-3 px-4">{user.is_admin ? 'Админ' : 'Пользователь'}</td>
-                  <td className="py-3 px-4">{user.documents?.length || 0}</td>
-                  <td className="py-3 px-4">
+                <tr key={user.id} className="hover:bg-gray-50 border-t border-gray-200">
+                  <td className="px-3 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">{user.email}</div>
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{`${user.first_name || ''} ${user.last_name || ''}`}</div>
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{new Date(user.created_at).toLocaleString('ru-RU')}</div>
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap">
+                    <span className={`px-3 py-1 rounded-md text-xs font-medium ${user.is_admin ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
+                      {user.is_admin ? 'Админ' : 'Пользователь'}
+                    </span>
+                  </td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">{user.documents?.length || 0}</td>
+                  <td className="px-3 py-4 whitespace-nowrap text-sm font-medium">
                     <button
                       onClick={() => selectUser(user)}
-                      className="py-1 px-3 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                      className="px-3 py-1 bg-blue-100 text-blue-800 hover:bg-blue-200 rounded-md text-xs font-medium"
                     >
                       Подробнее
                     </button>
@@ -270,6 +281,7 @@ export default function AdminUsersPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
       

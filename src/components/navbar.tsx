@@ -9,7 +9,10 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false)
 
   // Проверяем, что пользователь авторизован и находится в основном разделе
-  const isMainSection = pathname.includes('/(main)')
+  // URL не содержит '/(main)' - это внутренняя организация файлов
+  // Проверяем, что пользователь находится в одном из основных разделов или на главной
+  const mainSectionPaths = ['/products', '/cart', '/orders', '/documents']
+  const isMainSection = mainSectionPaths.some(path => pathname.startsWith(path)) || pathname === '/'
   
   // Меню доступно только для авторизованных пользователей в основном разделе
   if (!isMainSection) return null

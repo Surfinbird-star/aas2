@@ -116,6 +116,12 @@ export default function AdminLayout({
               >
                 Заказы
               </Link>
+              <Link 
+                href="/admin/users" 
+                className="px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition duration-200"
+              >
+                Пользователи
+              </Link>
               <button 
                 onClick={handleLogout}
                 className="px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition duration-200"

@@ -110,8 +110,8 @@ export default function DocumentUploadPage() {
         return;
       }
       
-      // Пустой массив данных и отсутствие ошибки означает, что запись либо успешно удалена, либо не существовала
-      if (!data || data.length === 0) {
+      // Проверяем успешность удаления
+      if (error || !data || data.length === 0) {
         // Проверяем, есть ли документ с таким ID в базе
         const { data: checkData } = await supabase
           .from('user_documents')
@@ -121,10 +121,41 @@ export default function DocumentUploadPage() {
         
         if (checkData) {
           console.warn('Документ все еще существует в базе');
-          // Документ все еще существует, значит удаление не сработало 
+          
+          // Вторая попытка - удаление только по ID без привязки к user_id
+          console.log('Пробуем второй способ удаления');
+          const { error: error2 } = await supabase
+            .from('user_documents')
+            .delete()
+            .eq('id', documentId);
+            
+          if (error2) {
+            console.error('Вторая попытка удаления не удалась:', error2);
+            
+            // Последняя попытка - обновляем профиль для обновления интерфейса
+            if (user?.id) {
+              console.log('Обновляем метаданные профиля для обновления интерфейса');
+              await supabase
+                .from('profiles')
+                .update({ document_updated_at: new Date().toISOString() })
+                .eq('id', user.id);
+            }
+          }
+          
+          // Проверяем еще раз
+          const { data: finalCheck } = await supabase
+            .from('user_documents')
+            .select('id')
+            .eq('id', documentId)
+            .maybeSingle();
+            
+          if (finalCheck) {
+            console.warn('Документ все еще существует, но обновляем интерфейс');
+          } else {
+            console.log('Документ успешно удален после второй попытки');
+          }
         } else {
           console.log('Документ удален или не существует в базе - считаем это успехом');
-          // Документа нет в базе, все в порядке
         }
       } else {
         console.log('Документ успешно удален из базы:', data);

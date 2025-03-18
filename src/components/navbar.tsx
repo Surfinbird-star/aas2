@@ -71,6 +71,14 @@ export default function Navbar() {
             >
               Мои заказы
             </Link>
+            <Link 
+              href="/documents" 
+              className={`px-3 py-2 rounded-md text-sm font-medium ${
+                pathname.includes('/documents') ? 'bg-blue-700' : 'hover:bg-blue-700'
+              }`}
+            >
+              Документы
+            </Link>
             <button 
               onClick={() => {/* Здесь будет логика выхода */}}
               className="px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700"
@@ -111,6 +119,15 @@ export default function Navbar() {
               onClick={() => setIsOpen(false)}
             >
               Мои заказы
+            </Link>
+            <Link 
+              href="/documents" 
+              className={`block px-3 py-2 rounded-md text-base font-medium ${
+                pathname.includes('/documents') ? 'bg-blue-700' : 'hover:bg-blue-700'
+              }`}
+              onClick={() => setIsOpen(false)}
+            >
+              Документы
             </Link>
             <button 
               onClick={() => {/* Здесь будет логика выхода */}}

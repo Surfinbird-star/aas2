@@ -141,16 +141,8 @@ export default function AdminUsersPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <nav className="mb-8 flex justify-between items-center">
+      <nav className="mb-8">
         <h1 className="text-2xl font-bold">Управление пользователями</h1>
-        <div className="flex gap-4">
-          <Link href="/admin/orders" className="py-2 px-4 bg-gray-200 rounded hover:bg-gray-300">
-            Заказы
-          </Link>
-          <Link href="/admin" className="py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700">
-            Панель администратора
-          </Link>
-        </div>
       </nav>
       
       {error && (

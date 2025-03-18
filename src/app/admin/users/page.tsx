@@ -20,6 +20,8 @@ interface UserProfile {
   email: string;
   first_name?: string;
   last_name?: string;
+  phone?: string;
+  address?: string;
   created_at: string;
   is_admin: boolean;
   documents?: UserDocument[];
@@ -187,9 +189,11 @@ export default function AdminUsersPage() {
                 <p><span className="font-semibold">Email:</span> {selectedUser.email}</p>
                 <p><span className="font-semibold">Имя:</span> {selectedUser.first_name || 'Не указано'}</p>
                 <p><span className="font-semibold">Фамилия:</span> {selectedUser.last_name || 'Не указано'}</p>
+                <p><span className="font-semibold">Телефон:</span> {selectedUser.phone || 'Не указан'}</p>
               </div>
               <div>
                 <p><span className="font-semibold">Роль:</span> {selectedUser.is_admin ? 'Администратор' : 'Пользователь'}</p>
+                <p><span className="font-semibold">Адрес:</span> {selectedUser.address || 'Не указан'}</p>
                 <p><span className="font-semibold">Дата регистрации:</span> {new Date(selectedUser.created_at).toLocaleString('ru-RU')}</p>
               </div>
             </div>
@@ -238,22 +242,21 @@ export default function AdminUsersPage() {
         </div>
       ) : (
         // Список всех пользователей
-        <div className="bg-white rounded-lg shadow-md overflow-hidden admin-panel">
-          <div className="py-4 px-6">
-            <table className="min-w-full divide-y divide-gray-200 table-auto">
-              <thead>
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <table className="min-w-full">
+              <thead className="bg-gray-50 border-b">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-100 uppercase tracking-wider">Email</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-100 uppercase tracking-wider">Имя</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-100 uppercase tracking-wider">Дата регистрации</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-100 uppercase tracking-wider">Роль</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-100 uppercase tracking-wider">Документы</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-100 uppercase tracking-wider">Действия</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">EMAIL</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ИМЯ</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ДАТА РЕГИСТРАЦИИ</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">РОЛЬ</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ДОКУМЕНТЫ</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ДЕЙСТВИЯ</th>
               </tr>
             </thead>
             <tbody>
               {users.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50 border-b border-gray-200">
+                <tr key={user.id} className="hover:bg-gray-50 border-b">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">{user.email}</div>
                   </td>
@@ -261,27 +264,26 @@ export default function AdminUsersPage() {
                     <div className="text-sm text-gray-900">{`${user.first_name || ''} ${user.last_name || ''}`}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{new Date(user.created_at).toLocaleString('ru-RU')}</div>
+                    <div className="text-sm text-gray-500">{new Date(user.created_at).toLocaleString('ru-RU')}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${user.is_admin ? 'bg-gray-700 text-white' : 'bg-green-100 text-green-800'}`}>
+                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${user.is_admin ? 'bg-gray-800 text-white' : 'bg-green-100 text-green-800'}`}>
                       {user.is_admin ? 'Админ' : 'Пользователь'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.documents?.length || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.documents?.length || 0}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <button
                       onClick={() => selectUser(user)}
-                      className="px-4 py-2 bg-gray-600 text-white hover:bg-gray-700 rounded-md text-xs font-medium transition duration-200"
+                      className="text-blue-600 hover:text-blue-900"
                     >
-                      Подробнее
+                      Детали
                     </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-          </div>
         </div>
       )}
       

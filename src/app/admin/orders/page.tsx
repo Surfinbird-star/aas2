@@ -275,9 +275,10 @@ export default function AdminOrdersPage() {
       console.log(`Вызов SQL-функции admin_update_order_item для товара ${itemId} с новым количеством ${newQuantity}`);
       
       // Используем SQL-функцию, обходящую ограничения RLS
+      // Передаем itemId как строку, чтобы избежать ошибки с типом UUID
       const { data, error } = await supabase
         .rpc('admin_update_order_item', { 
-          item_id: itemId, 
+          item_id: String(itemId), 
           new_quantity: newQuantity 
         })
       
@@ -287,10 +288,11 @@ export default function AdminOrdersPage() {
       }
       
       // Поскольку функция возвращает VOID, получаем обновленные данные через запрос
+      // Обратите внимание, что мы также преобразуем itemId в строку для правильного сравнения
       const { data: updatedItem } = await supabase
         .from('order_items')
         .select('*')
-        .eq('id', itemId)
+        .eq('id', String(itemId))
         .single();
       
       console.log(`Товар ID=${itemId} успешно обновлен через SQL-функцию, текущее состояние:`, updatedItem);

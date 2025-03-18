@@ -107,9 +107,19 @@ export default function AdminUsersPage() {
         throw error;
       }
       
+      // Проверяем, что content существует и является строкой
+      if (!data.content || typeof data.content !== 'string') {
+        throw new Error('Содержимое документа отсутствует или повреждено');
+      }
+      
+      // Обработка base64 для корректного отображения
+      let safeContent = data.content;
+      // Убедимся, что нет экранированных символов и некорректных символов
+      safeContent = safeContent.replace(/\x/g, '').replace(/\\/, '');
+      
       setViewingDocument({
         id: documentId,
-        content: data.content,
+        content: safeContent,
         mimeType: data.mime_type,
         filename: data.filename
       });
@@ -266,8 +276,8 @@ export default function AdminUsersPage() {
       
       {/* Модальное окно для просмотра документа */}
       {viewingDocument && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50" onClick={closeDocumentView}>
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="p-4 border-b flex justify-between items-center">
               <h3 className="text-lg font-semibold">{viewingDocument.filename}</h3>
               <button
@@ -279,11 +289,20 @@ export default function AdminUsersPage() {
             </div>
             <div className="flex-1 overflow-auto p-4">
               {viewingDocument.mimeType.startsWith('image/') ? (
-                <img
-                  src={`data:${viewingDocument.mimeType};base64,${viewingDocument.content}`}
-                  alt={viewingDocument.filename}
-                  className="max-w-full mx-auto"
-                />
+                <div className="text-center">
+                  <p className="mb-2">Изображение: {viewingDocument.filename}</p>
+                  {/* Используем обработчик ошибок для изображения */}
+                  <img
+                    src={`data:${viewingDocument.mimeType};base64,${viewingDocument.content}`}
+                    alt={viewingDocument.filename}
+                    className="max-w-full max-h-[60vh] mx-auto border"
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = '/placeholder-image.png';
+                      console.error('Ошибка загрузки изображения:', viewingDocument.filename);
+                      setError('Не удалось загрузить изображение. Формат данных некорректен.');
+                    }}
+                  />
               ) : viewingDocument.mimeType === 'application/pdf' ? (
                 <div className="h-[70vh]">
                   <iframe
@@ -295,13 +314,30 @@ export default function AdminUsersPage() {
                 <div className="p-4 bg-gray-100 rounded">
                   <p>Предпросмотр для этого типа файла недоступен.</p>
                   <p>Тип файла: {viewingDocument.mimeType}</p>
-                  <a
-                    href={`data:${viewingDocument.mimeType};base64,${viewingDocument.content}`}
-                    download={viewingDocument.filename}
+                  <button
+                    onClick={() => {
+                      try {
+                        const blob = new Blob(
+                          [Uint8Array.from(atob(viewingDocument.content), c => c.charCodeAt(0))], 
+                          { type: viewingDocument.mimeType }
+                        );
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = viewingDocument.filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                      } catch (err) {
+                        console.error('Ошибка скачивания файла:', err);
+                        setError('Не удалось скачать файл. Возможно, данные повреждены.');
+                      }
+                    }}
                     className="mt-2 inline-block py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700"
                   >
                     Скачать документ
-                  </a>
+                  </button>
                 </div>
               )}
             </div>

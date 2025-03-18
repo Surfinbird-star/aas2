@@ -267,7 +267,7 @@ export default function AdminUsersPage() {
                     <div className="text-sm text-gray-500">{new Date(user.created_at).toLocaleString('ru-RU')}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${user.is_admin ? 'bg-gray-800 text-white' : 'bg-green-100 text-green-800'}`}>
+                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${user.is_admin ? 'bg-blue-600 text-white' : 'bg-green-100 text-green-800'}`}>
                       {user.is_admin ? 'Админ' : 'Пользователь'}
                     </span>
                   </td>

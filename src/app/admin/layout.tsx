@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { useAdminAuth } from '@/hooks/useAdminAuth'
 import './admin.css'
 
 export default function AdminLayout({
@@ -12,71 +13,18 @@ export default function AdminLayout({
   children: React.ReactNode
 }) {
   const router = useRouter()
-  const [loading, setLoading] = useState(true)
-  const [isAdmin, setIsAdmin] = useState(false)
-
+  const { user, isAdmin, isLoading } = useAdminAuth()
+  
   useEffect(() => {
-    // Максимально простая проверка администратора
-    const checkAdmin = async () => {
-      // Сначала проверяем localStorage
-      try {
-        // Сразу проверяем кэш, без проверки времени
-        if (typeof window !== 'undefined' && localStorage.getItem('admin_authenticated') === 'true') {
-          console.log('Администратор авторизован из localStorage');
-          setIsAdmin(true);
-          setLoading(false);
-          return;
-        }
-      } catch (e) {
-        console.log('Ошибка при доступе к localStorage');
-      }
-
-      // Если нет в кэше, проверяем сессию
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) {
-          setLoading(false);
-          router.push('/admin/login');
-          return;
-        }
-        
-        // Проверяем права администратора
-        const { data } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', session.user.id)
-          .single();
-        
-        if (data && data.is_admin) {
-          setIsAdmin(true);
-          // Сохраняем в localStorage для быстрого доступа в будущем
-          try {
-            if (typeof window !== 'undefined') {
-              localStorage.setItem('admin_authenticated', 'true');
-            }
-          } catch {}
-        } else {
-          router.push('/admin/login?error=not_admin');
-        }
-      } catch (error) {
-        console.error('Ошибка при проверке сессии:', error);
-        router.push('/admin/login');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkAdmin()
-  }, [router])
+    // Перенаправляем на страницу входа, если нет пользователя или не админ
+    if (!isLoading && (!user || !isAdmin)) {
+      router.push('/admin/login' + (!user ? '' : '?error=not_admin'));
+    }
+  }, [user, isAdmin, isLoading, router])
 
   // Функция для выхода из аккаунта
   const handleLogout = async () => {
     try {
-      // Удаляем информацию об админе из localStorage
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('admin_authenticated');
-      }
       await supabase.auth.signOut()
       router.push('/admin/login')
     } catch (error) {
@@ -84,8 +32,21 @@ export default function AdminLayout({
     }
   }
 
-  // Скрываем индикатор загрузки, чтобы избежать бесконечной загрузки
+  // Если идет проверка авторизации, показываем загрузку
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex justify-center items-center bg-gray-100">
+        <div className="text-gray-500">Проверка доступа...</div>
+      </div>
+    );
+  }
+  
+  // Если нет пользователя или он не админ, не показываем содержимое
+  if (!user || !isAdmin) {
+    return null;
+  }
 
+  // Если пользователь админ, показываем интерфейс администратора
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
       {/* Верхняя навигационная панель администратора */}
@@ -125,10 +86,8 @@ export default function AdminLayout({
       </main>
       
       {/* Футер */}
-      <footer className="bg-gray-200 py-4 border-t border-gray-300">
-        <div className="container mx-auto px-4 text-center text-gray-600">
-          <p>© {new Date().getFullYear()} AAS Food Admin Panel</p>
-        </div>
+      <footer className="mt-auto py-3 bg-gray-800 text-white text-center text-sm">
+        &copy; {new Date().getFullYear()} AAS Food Admin Panel
       </footer>
     </div>
   )

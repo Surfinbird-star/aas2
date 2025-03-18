@@ -28,3 +28,33 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Улучшаем контрастность текста */
+.bg-white, .bg-gray-50, .bg-gray-100 {
+  color: #222222;
+}
+
+/* Стили для таблиц */
+table th {
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+table td {
+  color: #333333;
+}
+
+/* Стили для информации о пользователе */
+.font-semibold {
+  color: #111111;
+}
+
+/* Улучшаем видимость заголовков */
+h1, h2, h3, h4, h5, h6 {
+  color: #000000;
+}
+
+/* Улучшаем видимость информации в админ-панели */
+.admin-panel p, .admin-user-info p, .user-documents-list p {
+  color: #333;
+}

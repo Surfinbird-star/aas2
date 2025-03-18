@@ -1,0 +1,82 @@
+/* Стили для админ панели */
+
+/* Улучшаем контрастность текста */
+.admin-panel {
+  color: #222222;
+}
+
+/* Стили для таблиц */
+.admin-panel table {
+  border-collapse: collapse;
+  border: 1px solid #ccc;
+}
+
+.admin-panel thead {
+  background-color: #1e40af;
+  color: white;
+}
+
+.admin-panel th {
+  font-weight: 600;
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.admin-panel td {
+  color: #333333;
+  padding: 10px 12px;
+  border-bottom: 1px solid #eee;
+}
+
+.admin-panel tr:nth-child(even) {
+  background-color: #f9fafb;
+}
+
+.admin-panel tr:hover {
+  background-color: #f0f4ff;
+}
+
+/* Стили для информации о пользователе */
+.admin-user-info p {
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.admin-user-info .font-semibold {
+  color: #111;
+  font-weight: 600;
+}
+
+/* Стили для заголовков */
+.admin-panel h1, 
+.admin-panel h2, 
+.admin-panel h3, 
+.admin-panel h4 {
+  color: #111827;
+  font-weight: 600;
+}
+
+/* Стили для кнопок */
+.admin-panel button {
+  color: white;
+  background-color: #2563eb;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.admin-panel button:hover {
+  background-color: #1d4ed8;
+}
+
+/* Стили для документов */
+.user-documents-list table {
+  border: 1px solid #e5e7eb;
+}
+
+.user-documents-list thead {
+  background-color: #1e40af;
+  color: white;
+}

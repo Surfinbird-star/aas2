@@ -165,7 +165,7 @@ export default function AdminUsersPage() {
         </div>
       ) : selectedUser ? (
         // Отображение информации о выбранном пользователе и его документах
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-white rounded-lg shadow-md p-6 admin-panel">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold">
               Пользователь: {selectedUser.first_name} {selectedUser.last_name} ({selectedUser.email})
@@ -180,7 +180,7 @@ export default function AdminUsersPage() {
           
           <div className="mb-6">
             <h3 className="text-lg font-medium mb-3">Информация о пользователе:</h3>
-            <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded">
+            <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded admin-user-info">
               <div>
                 <p><span className="font-semibold">ID:</span> {selectedUser.id}</p>
                 <p><span className="font-semibold">Email:</span> {selectedUser.email}</p>
@@ -194,7 +194,7 @@ export default function AdminUsersPage() {
             </div>
           </div>
           
-          <div>
+          <div className="user-documents-list">
             <h3 className="text-lg font-medium mb-3">Документы пользователя:</h3>
             {selectedUser.documents && selectedUser.documents.length > 0 ? (
               <div className="overflow-x-auto">

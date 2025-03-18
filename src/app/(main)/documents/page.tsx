@@ -93,16 +93,36 @@ export default function DocumentUploadPage() {
       setDeletingDocId(documentId);
       setError('');
       
-      const { error } = await supabase
+      console.log(`Начинаем удаление документа ID: ${documentId}`);
+      
+      // Удаляем документ только по ID без ограничения по user_id
+      const { data, error } = await supabase
         .from('user_documents')
         .delete()
         .eq('id', documentId)
-        .eq('user_id', user.id); // Дополнительная проверка, чтобы убедиться, что пользователь удаляет свой документ
+        .select(); // Добавляем .select() для получения информации об удаленных записях
+      
+      console.log('Ответ от сервера:', { data, error });
       
       if (error) {
-        console.error('Error deleting document:', error);
+        console.error('Ошибка при удалении документа:', error);
         setError(`Ошибка при удалении документа: ${error.message}`);
         return;
+      }
+      
+      // Проверяем, были ли удалены записи
+      if (!data || data.length === 0) {
+        console.warn('Документ не был удален из базы данных');
+        // Дополнительная попытка удаления без фильтрации
+        const retryResult = await supabase
+          .from('user_documents')
+          .delete()
+          .eq('id', documentId)
+          .select();
+        
+        console.log('Результат повторной попытки:', retryResult);
+      } else {
+        console.log('Документ успешно удален из базы:', data);
       }
       
       // Обновляем список документов

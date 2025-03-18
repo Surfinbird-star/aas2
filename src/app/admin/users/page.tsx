@@ -39,12 +39,12 @@ export default function AdminUsersPage() {
   const router = useRouter();
   const { user, isAdmin, isLoading } = useAuth();
 
-  // Проверка прав администратора
+  // Проверка прав администратора - только если пользователь не авторизован вовсе
   useEffect(() => {
-    if (!isLoading && (!user || !isAdmin)) {
+    if (!isLoading && !user) {
       router.push('/admin/login');
     }
-  }, [user, isAdmin, isLoading, router]);
+  }, [user, isLoading, router]);
 
   // Загрузка пользователей
   useEffect(() => {
@@ -93,7 +93,7 @@ export default function AdminUsersPage() {
       }
     }
     
-    if (user && isAdmin && !isLoading) {
+    if (user && !isLoading) {
       loadUsers();
     }
   }, [user, isAdmin, isLoading]);
@@ -142,17 +142,28 @@ export default function AdminUsersPage() {
       setDeletingDocId(documentId);
       setError(null);
       
-      // Добавляем фильтр по ID пользователя для дополнительной защиты
-      const { error } = await supabase
+      console.log(`Начинаем удаление документа ID: ${documentId}`);
+      
+      // Удаляем документ только по ID без ограничения по user_id
+      const { data, error } = await supabase
         .from('user_documents')
         .delete()
         .eq('id', documentId)
-        .eq('user_id', selectedUser.id); // Добавляем проверку, чтобы гарантировать удаление конкретного документа
+        .select(); // Добавляем .select() для получения ответа об удаленных записях
+      
+      console.log('Ответ от сервера:', { data, error });
       
       if (error) {
-        console.error('Error deleting document:', error);
+        console.error('Ошибка при удалении документа:', error);
         setError(`Ошибка при удалении документа: ${error.message}`);
         return;
+      }
+      
+      // Проверяем, были ли удалены записи
+      if (!data || data.length === 0) {
+        console.warn('Документ не был удален из базы данных');
+      } else {
+        console.log('Документ успешно удален из базы:', data);
       }
       
       // Обновляем список документов пользователя

@@ -74,7 +74,8 @@ export default function AdminOrdersPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
   const [editedQuantities, setEditedQuantities] = useState<{[key: string]: number}>({})
-  const [savingQuantities, setSavingQuantities] = useState<{[key: string]: boolean}>({})
+  const [savingQuantities, setSavingQuantities] = useState(false)
+  const [orderItemsToUpdate, setOrderItemsToUpdate] = useState<{[orderId: string]: {[itemId: string]: number}}>({})
 
   // Получение списка заказов
   const fetchOrders = async () => {
@@ -209,47 +210,103 @@ export default function AdminOrdersPage() {
     }
   }
 
-  // Обновление количества товара в заказе
-  const updateItemQuantity = async (orderId: string, itemId: string, newQuantity: number) => {
+  // Обработка изменения количества товара
+  const handleQuantityChange = (orderId: string, itemId: string, newQuantity: number) => {
+    // Сохраняем изменения в локальном состоянии
+    setEditedQuantities(prev => ({
+      ...prev,
+      [itemId]: newQuantity
+    }))
+    
+    // Добавляем в список товаров для обновления
+    setOrderItemsToUpdate(prev => {
+      // Если для этого заказа еще нет записей - создаем новый объект
+      if (!prev[orderId]) {
+        return {
+          ...prev,
+          [orderId]: { [itemId]: newQuantity }
+        }
+      }
+      
+      // Иначе добавляем/обновляем запись для этого товара
+      return {
+        ...prev,
+        [orderId]: {
+          ...prev[orderId],
+          [itemId]: newQuantity
+        }
+      }
+    })
+  }
+  
+  // Сохранение всех изменений количества товаров в заказе
+  const saveOrderChanges = async (orderId: string) => {
+    if (!orderItemsToUpdate[orderId] || Object.keys(orderItemsToUpdate[orderId]).length === 0) {
+      return // Нет изменений для сохранения
+    }
+    
     try {
-      setSavingQuantities(prev => ({ ...prev, [itemId]: true }))
+      setSavingQuantities(true)
       
-      // Обновляем количество в базе данных
-      const { error } = await supabase
-        .from('order_items')
-        .update({ quantity: newQuantity })
-        .eq('id', itemId)
-        .eq('order_id', orderId)
+      // Получаем все изменения для этого заказа
+      const itemUpdates = orderItemsToUpdate[orderId]
       
-      if (error) throw error
+      // Для каждого изменения делаем обновление в базе данных
+      const updatePromises = Object.keys(itemUpdates).map(async (itemId) => {
+        const newQuantity = itemUpdates[itemId]
+        
+        const { error } = await supabase
+          .from('order_items')
+          .update({ quantity: newQuantity })
+          .eq('id', itemId)
+          .eq('order_id', orderId)
+        
+        if (error) throw error
+        
+        return { itemId, newQuantity }
+      })
+      
+      // Ждем завершения всех обновлений
+      await Promise.all(updatePromises)
       
       // Обновляем количество в локальном состоянии
       setOrders(prevOrders => 
         prevOrders.map(order => {
           if (order.id === orderId) {
-            const updatedItems = order.items.map(item => 
-              item.id === itemId
-                ? { ...item, quantity: newQuantity }
-                : item
-            )
+            const updatedItems = order.items.map(item => {
+              if (itemUpdates[item.id] !== undefined) {
+                return { ...item, quantity: itemUpdates[item.id] }
+              }
+              return item
+            })
             return { ...order, items: updatedItems }
           }
           return order
         })
       )
       
-      // Очищаем отредактированное состояние для этого элемента
+      // Очищаем состояния редактирования для этого заказа
+      const itemIds = Object.keys(itemUpdates)
       setEditedQuantities(prev => {
         const newState = { ...prev }
-        delete newState[itemId]
+        itemIds.forEach(id => delete newState[id])
         return newState
       })
       
+      // Очищаем список товаров для обновления
+      setOrderItemsToUpdate(prev => {
+        const newState = { ...prev }
+        delete newState[orderId]
+        return newState
+      })
+      
+      alert('Изменения успешно сохранены')
+      
     } catch (error) {
-      console.error('Ошибка при обновлении количества товара:', error)
-      alert('Не удалось обновить количество товара в заказе')
+      console.error('Ошибка при сохранении изменений:', error)
+      alert('Не удалось сохранить изменения')
     } finally {
-      setSavingQuantities(prev => ({ ...prev, [itemId]: false }))
+      setSavingQuantities(false)
     }
   }
 
@@ -458,7 +515,33 @@ export default function AdminOrdersPage() {
                         <tr>
                           <td colSpan={6} className="px-6 py-4">
                             <div className="bg-gray-50 p-4 rounded-lg">
-                              <h4 className="font-medium text-gray-900 mb-2">Товары в заказе</h4>
+                              <div className="flex justify-between items-center mb-2">
+                                <h4 className="font-medium text-gray-900">Товары в заказе</h4>
+                                {Object.keys(orderItemsToUpdate).includes(order.id) && (
+                                  <button
+                                    onClick={() => saveOrderChanges(order.id)}
+                                    disabled={savingQuantities}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-sm flex items-center disabled:opacity-50"
+                                  >
+                                    {savingQuantities ? (
+                                      <>
+                                        <svg className="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+                                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Сохранение...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <svg className="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        Сохранить изменения
+                                      </>
+                                    )}
+                                  </button>
+                                )}
+                              </div>
                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                                 {order.items.map(item => (
                                   <div key={item.id} className="bg-white p-3 rounded border border-gray-200">
@@ -472,29 +555,11 @@ export default function AdminOrdersPage() {
                                           value={editedQuantities[item.id] !== undefined ? editedQuantities[item.id] : item.quantity} 
                                           onChange={(e) => {
                                             const newValue = parseInt(e.target.value, 10) || 1;
-                                            setEditedQuantities(prev => ({ ...prev, [item.id]: newValue }))
+                                            handleQuantityChange(order.id, item.id, newValue);
                                           }}
                                           className="w-16 px-2 py-1 text-sm border border-gray-300 rounded mr-2"
                                         />
                                         <span>{item.product_unit}</span>
-                                        {editedQuantities[item.id] !== undefined && editedQuantities[item.id] !== item.quantity && (
-                                          <button 
-                                            className="ml-2 text-blue-600 p-1 rounded hover:bg-blue-50 disabled:opacity-50"
-                                            disabled={savingQuantities[item.id]}
-                                            onClick={() => updateItemQuantity(order.id, item.id, editedQuantities[item.id])}
-                                          >
-                                            {savingQuantities[item.id] ? (
-                                              <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                              </svg>
-                                            ) : (
-                                              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                              </svg>
-                                            )}
-                                          </button>
-                                        )}
                                       </div>
                                     </div>
                                   </div>

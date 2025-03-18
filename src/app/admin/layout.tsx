@@ -111,7 +111,7 @@ export default function AdminLayout({
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
       {/* Верхняя навигационная панель администратора */}
-      <header className="bg-blue-800 text-white shadow-md">
+      <header className="bg-gray-800 text-white shadow-md">
         <div className="container mx-auto px-4 py-3">
           <div className="flex justify-between items-center">
             <div className="flex items-center">
@@ -120,19 +120,19 @@ export default function AdminLayout({
             <nav className="flex items-center space-x-4">
               <Link 
                 href="/admin/orders" 
-                className="px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition duration-200"
+                className="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 transition duration-200"
               >
                 Заказы
               </Link>
               <Link 
                 href="/admin/users" 
-                className="px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition duration-200"
+                className="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 transition duration-200"
               >
                 Пользователи
               </Link>
               <button 
                 onClick={handleLogout}
-                className="px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition duration-200"
+                className="px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-700 transition duration-200"
               >
                 Выйти
               </button>

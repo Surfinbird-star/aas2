@@ -12,7 +12,7 @@
 }
 
 .admin-panel thead {
-  background-color: #1e40af;
+  background-color: #374151; /* Заменяем синий на серый */
   color: white;
 }
 

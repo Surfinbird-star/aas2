@@ -152,7 +152,7 @@ export default function AdminUsersPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <h1 className="text-2xl font-bold mb-8">Управление пользователями</h1>
+      <h1 className="text-2xl font-bold text-gray-800 mb-8">Управление пользователями</h1>
       
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-6">
@@ -168,20 +168,20 @@ export default function AdminUsersPage() {
         // Отображение информации о выбранном пользователе и его документах
         <div className="bg-white rounded-lg shadow-md p-6 admin-panel">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold">
+            <h2 className="text-xl font-medium text-gray-800">
               Пользователь: {selectedUser.first_name} {selectedUser.last_name} ({selectedUser.email})
             </h2>
             <button
               onClick={backToUserList}
-              className="px-3 py-1 bg-gray-200 text-gray-800 hover:bg-gray-300 rounded-md text-xs font-medium"
+              className="px-4 py-2 bg-gray-600 text-white hover:bg-gray-700 rounded-md text-sm font-medium transition duration-200"
             >
               Назад к списку
             </button>
           </div>
           
           <div className="mb-6">
-            <h3 className="text-lg font-medium mb-3">Информация о пользователе:</h3>
-            <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded admin-user-info">
+            <h3 className="text-lg font-medium mb-3 text-gray-700">Информация о пользователе:</h3>
+            <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-md border border-gray-200 admin-user-info">
               <div>
                 <p><span className="font-semibold">ID:</span> {selectedUser.id}</p>
                 <p><span className="font-semibold">Email:</span> {selectedUser.email}</p>
@@ -196,7 +196,7 @@ export default function AdminUsersPage() {
           </div>
           
           <div className="user-documents-list">
-            <h3 className="text-lg font-medium mb-3">Документы пользователя:</h3>
+            <h3 className="text-lg font-medium mb-3 text-gray-700">Документы пользователя:</h3>
             {selectedUser.documents && selectedUser.documents.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="min-w-full bg-white">
@@ -219,7 +219,7 @@ export default function AdminUsersPage() {
                         <td className="py-3 px-4">
                           <button
                             onClick={() => viewDocument(doc.id)}
-                            className="px-3 py-1 bg-blue-100 text-blue-800 hover:bg-blue-200 rounded-md text-xs font-medium"
+                            className="px-3 py-1 bg-gray-600 text-white hover:bg-gray-700 rounded-md text-xs font-medium transition duration-200"
                           >
                             Просмотреть
                           </button>
@@ -240,39 +240,39 @@ export default function AdminUsersPage() {
         // Список всех пользователей
         <div className="bg-white rounded-lg shadow-md overflow-hidden admin-panel">
           <div className="py-4 px-6">
-            <table className="min-w-full divide-y divide-gray-200">
+            <table className="min-w-full divide-y divide-gray-200 table-auto">
               <thead>
                 <tr>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Имя</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Дата регистрации</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Роль</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Документы</th>
-                  <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-100 uppercase tracking-wider">Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-100 uppercase tracking-wider">Имя</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-100 uppercase tracking-wider">Дата регистрации</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-100 uppercase tracking-wider">Роль</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-100 uppercase tracking-wider">Документы</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-100 uppercase tracking-wider">Действия</th>
               </tr>
             </thead>
             <tbody>
               {users.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50 border-t border-gray-200">
-                  <td className="px-3 py-4 whitespace-nowrap">
+                <tr key={user.id} className="hover:bg-gray-50 border-b border-gray-200">
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">{user.email}</div>
                   </td>
-                  <td className="px-3 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">{`${user.first_name || ''} ${user.last_name || ''}`}</div>
                   </td>
-                  <td className="px-3 py-4 whitespace-nowrap">
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">{new Date(user.created_at).toLocaleString('ru-RU')}</div>
                   </td>
-                  <td className="px-3 py-4 whitespace-nowrap">
-                    <span className={`px-3 py-1 rounded-md text-xs font-medium ${user.is_admin ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${user.is_admin ? 'bg-gray-700 text-white' : 'bg-green-100 text-green-800'}`}>
                       {user.is_admin ? 'Админ' : 'Пользователь'}
                     </span>
                   </td>
-                  <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900">{user.documents?.length || 0}</td>
-                  <td className="px-3 py-4 whitespace-nowrap text-sm font-medium">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.documents?.length || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <button
                       onClick={() => selectUser(user)}
-                      className="px-3 py-1 bg-blue-100 text-blue-800 hover:bg-blue-200 rounded-md text-xs font-medium"
+                      className="px-4 py-2 bg-gray-600 text-white hover:bg-gray-700 rounded-md text-xs font-medium transition duration-200"
                     >
                       Подробнее
                     </button>

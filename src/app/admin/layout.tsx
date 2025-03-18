@@ -16,7 +16,25 @@ export default function AdminLayout({
   const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
-    // Проверяем аутентификацию и права администратора - упрощенная версия
+    // Проверяем наличие сохраненной информации о правах администратора
+    const adminCheckStorage = localStorage.getItem('admin_authenticated')
+    const adminSessionTime = localStorage.getItem('admin_session_time')
+    
+    // Если есть сохраненная информация о правах и она не старше 1 часа
+    if (adminCheckStorage === 'true' && adminSessionTime) {
+      const sessionTime = parseInt(adminSessionTime)
+      const currentTime = Date.now()
+      
+      // Проверяем, что сессия не старше 1 часа (3600000 мс)
+      if (currentTime - sessionTime < 3600000) {
+        console.log('Используем кэшированные права администратора')
+        setIsAdmin(true)
+        setLoading(false)
+        return
+      }
+    }
+
+    // Если кэша нет или он устарел, выполняем проверку заново
     const checkAdminRights = async () => {
       try {
         // Устанавливаем таймаут для избежания бесконечного зависания
@@ -36,30 +54,27 @@ export default function AdminLayout({
           return
         }
         
-        // 2. Применяем временное решение - считаем пользователя админом, если он авторизован
-        // Это позволит избежать зависания на проверке прав
-        clearTimeout(timeoutId)
-        setIsAdmin(true)
-        setLoading(false)
+        // 2. Проверяем права администратора
+        const { data: profileData, error } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', session.user.id)
+          .single()
         
-        // 3. Дополнительно проверяем права админа в фоновом режиме
-        try {
-          const { data: profileData, error } = await supabase
-            .from('profiles')
-            .select('is_admin')
-            .eq('id', session.user.id)
-            .single()
-          
-          // Если есть ошибка или пользователь не админ, перенаправим на логин
-          if (error || !profileData || !profileData.is_admin) {
-            console.log('Пользователь не является администратором')
-            // Не будем сразу перенаправлять, так как мы уже отрисовали интерфейс
-          }
-        } catch (err) {
-          // Ошибку вторичной проверки игнорируем, так как интерфейс уже отображен
-          console.error('Ошибка при вторичной проверке профиля:', err)
+        clearTimeout(timeoutId)
+        
+        // Если пользователь админ, сохраняем это в state и localStorage
+        if (profileData && profileData.is_admin) {
+          setIsAdmin(true)
+          // Кэшируем права администратора
+          localStorage.setItem('admin_authenticated', 'true')
+          localStorage.setItem('admin_session_time', Date.now().toString())
+        } else {
+          console.log('Пользователь не является администратором')
+          router.push('/admin/login?error=not_admin')
         }
         
+        setLoading(false)
       } catch (error) {
         console.error('Ошибка при проверке прав администратора:', error)
         setLoading(false)
@@ -74,11 +89,12 @@ export default function AdminLayout({
       if (loading) {
         console.log('Финальный таймаут проверки прав')
         setLoading(false)
+        router.push('/admin/login')
       }
     }, 8000) // Финальный таймаут через 8 секунд
     
     return () => clearTimeout(fallbackTimeoutId)
-  }, [router, loading])
+  }, [router])
 
   // Функция для выхода из аккаунта
   const handleLogout = async () => {

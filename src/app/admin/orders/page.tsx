@@ -269,24 +269,32 @@ export default function AdminOrdersPage() {
     console.log('Изменения для сохранения:', orderItemsToUpdate);
   }
   
-  // Непосредственное обновление товара в базе данных
+  // Непосредственное обновление товара в базе данных через SQL-функцию
   const updateOrderItem = async (itemId: string, orderId: string, newQuantity: number) => {
     try {
-      // Директный SQL-запрос на обновление
+      console.log(`Вызов SQL-функции admin_update_order_item для товара ${itemId} с новым количеством ${newQuantity}`);
+      
+      // Используем SQL-функцию, обходящую ограничения RLS
       const { data, error } = await supabase
-        .from('order_items')
-        .update({ quantity: newQuantity })
-        .eq('id', itemId)
-        .eq('order_id', orderId)
-        .select()
+        .rpc('admin_update_order_item', { 
+          item_id: itemId, 
+          new_quantity: newQuantity 
+        })
       
       if (error) {
-        console.error(`Ошибка при обновлении товара ${itemId}:`, error);
+        console.error(`Ошибка при вызове функции admin_update_order_item для товара ${itemId}:`, error);
         throw error;
       }
       
-      console.log(`Товар ID=${itemId} успешно обновлен, результат:`, data);
-      return { itemId, newQuantity, data };
+      // Поскольку функция возвращает VOID, получаем обновленные данные через запрос
+      const { data: updatedItem } = await supabase
+        .from('order_items')
+        .select('*')
+        .eq('id', itemId)
+        .single();
+      
+      console.log(`Товар ID=${itemId} успешно обновлен через SQL-функцию, текущее состояние:`, updatedItem);
+      return { itemId, newQuantity, data: updatedItem };
     } catch (err) {
       console.error(`Сбой при обновлении товара ${itemId}:`, err);
       throw err;

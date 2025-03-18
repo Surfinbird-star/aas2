@@ -115,7 +115,7 @@ export default function AdminUsersPage() {
       // Обработка base64 для корректного отображения
       let safeContent = data.content;
       // Убедимся, что нет экранированных символов и некорректных символов
-      safeContent = safeContent.replace(/\x/g, '').replace(/\\/, '');
+      safeContent = safeContent.replace(/\\x/g, '').replace(/\\\\/g, '');
       
       setViewingDocument({
         id: documentId,
@@ -303,6 +303,7 @@ export default function AdminUsersPage() {
                       setError('Не удалось загрузить изображение. Формат данных некорректен.');
                     }}
                   />
+                </div>
               ) : viewingDocument.mimeType === 'application/pdf' ? (
                 <div className="h-[70vh]">
                   <iframe

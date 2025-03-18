@@ -6,7 +6,7 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  output: 'standalone',
+  output: 'export',
   // Отключаем некоторые проверки для успешной сборки
   experimental: {
     // Эта опция повысит стабильность сборки при работе с CSS

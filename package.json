@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
-    "start": "node .next/standalone/server.js",
+    "export": "next build",
+    "start": "npx serve out",
     "lint": "next lint"
   },
   "dependencies": {

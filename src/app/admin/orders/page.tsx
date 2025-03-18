@@ -269,6 +269,30 @@ export default function AdminOrdersPage() {
     console.log('Изменения для сохранения:', orderItemsToUpdate);
   }
   
+  // Непосредственное обновление товара в базе данных
+  const updateOrderItem = async (itemId: string, orderId: string, newQuantity: number) => {
+    try {
+      // Директный SQL-запрос на обновление
+      const { data, error } = await supabase
+        .from('order_items')
+        .update({ quantity: newQuantity })
+        .eq('id', itemId)
+        .eq('order_id', orderId)
+        .select()
+      
+      if (error) {
+        console.error(`Ошибка при обновлении товара ${itemId}:`, error);
+        throw error;
+      }
+      
+      console.log(`Товар ID=${itemId} успешно обновлен, результат:`, data);
+      return { itemId, newQuantity, data };
+    } catch (err) {
+      console.error(`Сбой при обновлении товара ${itemId}:`, err);
+      throw err;
+    }
+  }
+
   // Сохранение всех изменений количества товаров в заказе
   const saveOrderChanges = async (orderId: string) => {
     if (!orderItemsToUpdate[orderId] || Object.keys(orderItemsToUpdate[orderId]).length === 0) {
@@ -280,6 +304,10 @@ export default function AdminOrdersPage() {
       setSavingQuantities(true)
       console.log('Начинаем сохранение изменений для заказа:', orderId);
       
+      // Проверяем сессию перед обновлением
+      const { data: session } = await supabase.auth.getSession();
+      console.log('Статус сессии:', session);
+      
       // Получаем все изменения для этого заказа
       const itemUpdates = orderItemsToUpdate[orderId]
       
@@ -288,20 +316,8 @@ export default function AdminOrdersPage() {
         const newQuantity = itemUpdates[itemId]
         console.log(`Обновляем товар ID=${itemId} в заказе ${orderId}, новое количество: ${newQuantity}`);
         
-        // Запрос к Supabase для обновления количества товара
-        const { data, error } = await supabase
-          .from('order_items')
-          .update({ quantity: newQuantity })
-          .match({ id: itemId, order_id: orderId })
-          .select()
-        
-        if (error) {
-          console.error(`Ошибка при обновлении товара ${itemId}:`, error);
-          throw error;
-        }
-        
-        console.log(`Товар ID=${itemId} успешно обновлен`, data);
-        return { itemId, newQuantity }
+        // Используем функцию обновления
+        return await updateOrderItem(itemId, orderId, newQuantity);
       })
       
       // Ждем завершения всех обновлений

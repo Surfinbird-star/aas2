@@ -288,18 +288,19 @@ export default function AdminOrdersPage() {
         const newQuantity = itemUpdates[itemId]
         console.log(`Обновляем товар ID=${itemId} в заказе ${orderId}, новое количество: ${newQuantity}`);
         
-        // Используем createClient для создания нового клиента Supabase с ключами из .env файла
-        const { error } = await supabase
+        // Запрос к Supabase для обновления количества товара
+        const { data, error } = await supabase
           .from('order_items')
           .update({ quantity: newQuantity })
-          .eq('id', itemId)
+          .match({ id: itemId, order_id: orderId })
+          .select()
         
         if (error) {
           console.error(`Ошибка при обновлении товара ${itemId}:`, error);
           throw error;
         }
         
-        console.log(`Товар ID=${itemId} успешно обновлен`);
+        console.log(`Товар ID=${itemId} успешно обновлен`, data);
         return { itemId, newQuantity }
       })
       

@@ -14,92 +14,97 @@ export default function AdminLayout({
   const [loading, setLoading] = useState<boolean>(true);
   
   useEffect(() => {
-    // Обработчик для хранения информации о перенаправлении
-    const redirectFlag = sessionStorage.getItem('admin_redirect');
-    if (redirectFlag) {
-      // Удаляем флаг перенаправления, чтобы не зациклиться
-      sessionStorage.removeItem('admin_redirect'); 
-      setLoading(false);
-      return;
-    }
+    // Предотвращаем выполнение на сервере
+    if (typeof window === 'undefined') return;
 
-    // Проверяем, авторизован ли администратор (один раз при загрузке страницы)
-    if (typeof window !== 'undefined') {
-      const isAdminAuthenticated = sessionStorage.getItem('admin_authenticated') === 'true';
-      
-      if (isAdminAuthenticated) {
-        setIsAuthenticated(true);
-        setLoading(false);
-        return;
-      }
-      
-      // Если нет информации в sessionStorage, проверяем сессию Supabase
-      const checkAdmin = async () => {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          
-          if (!session) {
-            // Устанавливаем флаг перенаправления
-            sessionStorage.setItem('admin_redirect', 'true');
-            window.location.href = '/admin/login';
-            return;
-          }
-          
-          // Проверяем права администратора
-          const { data } = await supabase
-            .from('profiles')
-            .select('is_admin')
-            .eq('id', session.user.id)
-            .single();
-          
-          if (data && data.is_admin) {
-            // Сохраняем статус в sessionStorage
-            sessionStorage.setItem('admin_authenticated', 'true');
-            setIsAuthenticated(true);
-            setLoading(false);
-          } else {
-            // Устанавливаем флаг перенаправления
-            sessionStorage.setItem('admin_redirect', 'true');
-            window.location.href = '/admin/login?error=not_admin';
-          }
-        } catch (error) {
-          console.error('Ошибка при проверке сессии:', error);
-          // Устанавливаем флаг перенаправления
-          sessionStorage.setItem('admin_redirect', 'true');
-          window.location.href = '/admin/login';
+    const checkAuth = async () => {
+      try {
+        // Проверяем флаг перенаправления, чтобы избежать зацикливания
+        const redirectFlag = sessionStorage.getItem('admin_redirect');
+        if (redirectFlag === 'true') {
+          // Удаляем флаг перенаправления и прекращаем проверку
+          sessionStorage.removeItem('admin_redirect');
+          setLoading(false);
+          return;
         }
-      };
-      
-      checkAdmin();
-    }
-  }, [])
+        
+        // Проверяем, сохранена ли информация о том, что пользователь - админ
+        const isAdminAuthenticated = sessionStorage.getItem('admin_authenticated') === 'true';
+        if (isAdminAuthenticated) {
+          setIsAuthenticated(true);
+          setLoading(false);
+          return;
+        }
+        
+        // Если нет информации в sessionStorage, проверяем сессию Supabase
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          // Нет активной сессии, перенаправляем на страницу входа
+          setLoading(false);
+          setTimeout(() => {
+            sessionStorage.setItem('admin_redirect', 'true');
+            window.location.replace('/admin/login');
+          }, 100);
+          return;
+        }
+        
+        // Проверяем права администратора
+        const { data } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', session.user.id)
+          .single();
+        
+        if (data && data.is_admin === true) {
+          // Пользователь - администратор
+          sessionStorage.setItem('admin_authenticated', 'true');
+          setIsAuthenticated(true);
+          setLoading(false);
+        } else {
+          // Пользователь не администратор, перенаправляем
+          setLoading(false);
+          setTimeout(() => {
+            sessionStorage.setItem('admin_redirect', 'true');
+            window.location.replace('/admin/login?error=not_admin');
+          }, 100);
+        }
+      } catch (error) {
+        console.error('Ошибка при проверке авторизации:', error);
+        setLoading(false);
+        setTimeout(() => {
+          sessionStorage.setItem('admin_redirect', 'true');
+          window.location.replace('/admin/login');
+        }, 100);
+      }
+    };
+    
+    // Запускаем проверку
+    checkAuth();
+  }, []);
 
-  // Функция для выхода из аккаунта
+  // Функция выхода из аккаунта
   const handleLogout = async () => {
     try {
-      // Сначала устанавливаем флаг перенаправления, чтобы предотвратить зацикливание
+      // Сначала устанавливаем флаг перенаправления
       sessionStorage.setItem('admin_redirect', 'true');
       
       // Очищаем состояние аутентификации
       sessionStorage.removeItem('admin_authenticated');
       setIsAuthenticated(false);
       
-      // Выходим из Supabase
+      // Выходим из Supabase и перенаправляем
       await supabase.auth.signOut();
-      
-      // Отключаем использование истории браузера и перенаправляем на страницу входа
       window.location.replace('/admin/login');
     } catch (error) {
       console.error('Ошибка при выходе из аккаунта:', error);
-      // Даже в случае ошибки устанавливаем флаг перенаправления
+      // Даже при ошибке пытаемся перенаправить
       sessionStorage.setItem('admin_redirect', 'true');
       sessionStorage.removeItem('admin_authenticated');
-      setIsAuthenticated(false);
       window.location.replace('/admin/login');
     }
-  }
+  };
 
-  // Показываем загрузку, пока не завершена проверка авторизации
+  // Показываем загрузку
   if (loading) {
     return (
       <div className="min-h-screen flex justify-center items-center bg-gray-100">
@@ -108,14 +113,8 @@ export default function AdminLayout({
     );
   }
   
-  // Если нет авторизации, перенаправляем на страницу входа
+  // Если не авторизован, показываем сообщение о перенаправлении
   if (!isAuthenticated) {
-    if (typeof window !== 'undefined') {
-      // Устанавливаем флаг перенаправления, чтобы предотвратить зацикливание
-      sessionStorage.setItem('admin_redirect', 'true');
-      window.location.replace('/admin/login');
-    }
-    // Показываем загрузку, пока происходит перенаправление
     return (
       <div className="min-h-screen flex justify-center items-center bg-gray-100">
         <div className="text-gray-500">Перенаправление на страницу входа...</div>
@@ -123,7 +122,7 @@ export default function AdminLayout({
     );
   }
 
-  // Если пользователь админ, показываем интерфейс администратора
+  // Если пользователь админ, показываем интерфейс
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
       {/* Верхняя навигационная панель администратора */}
@@ -167,5 +166,5 @@ export default function AdminLayout({
         &copy; {new Date().getFullYear()} AAS Food Admin Panel
       </footer>
     </div>
-  )
+  );
 }

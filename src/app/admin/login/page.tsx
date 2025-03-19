@@ -4,6 +4,7 @@ import { useState, FormEvent, Suspense, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import styles from './login.module.css'
 
 export default function AdminLoginPage() {
   return (
@@ -22,11 +23,23 @@ function LoginContent() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
-  // При загрузке страницы входа удаляем любые флаги авторизации
+  // При загрузке страницы входа проверяем состояние авторизации
   useEffect(() => {
+    // Предотвращаем выполнение на сервере
+    if (typeof window === 'undefined') return;
+    
     // Удаляем флаг перенаправления, чтобы избежать зацикливания
-    if (typeof window !== 'undefined') {
-      sessionStorage.removeItem('admin_redirect');
+    sessionStorage.removeItem('admin_redirect');
+    
+    // Проверяем, есть ли уже авторизация админа
+    const isAdminAuthenticated = sessionStorage.getItem('admin_authenticated') === 'true';
+    
+    if (isAdminAuthenticated) {
+      console.log('Пользователь уже авторизован как админ, перенаправляем');
+      // Добавляем небольшую задержку для предотвращения потенциальных проблем с запуском JS
+      setTimeout(() => {
+        window.location.replace('/admin/orders');
+      }, 100);
     }
   }, [])
 
@@ -106,12 +119,18 @@ function LoginContent() {
           return
         }
         
-        // Пользователь имеет права администратора, устанавливаем флаг перенаправления
+        // Пользователь имеет права администратора, устанавливаем флаг авторизации
         sessionStorage.setItem('admin_authenticated', 'true');
         console.log('Доступ разрешен: пользователь является администратором')
         
-        // Используем жесткое перенаправление вместо router.push для надежности
-        window.location.replace('/admin/orders')
+        // Устанавливаем флаг перенаправления для предотвращения зацикливания
+        sessionStorage.setItem('admin_redirect', 'true');
+        
+        // Завершаем загрузку и используем setTimeout для предотвращения зацикливания
+        setLoading(false);
+        setTimeout(() => {
+          window.location.replace('/admin/orders');
+        }, 300);
       } catch (profileCheckError: any) {
         console.error('Ошибка при проверке прав администратора:', profileCheckError)
         setError('Ошибка при проверке прав администратора')

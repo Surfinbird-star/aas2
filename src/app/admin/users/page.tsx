@@ -96,7 +96,7 @@ export default function AdminUsersPage() {
     }
   }, [authorized]);
   
-  // Скачивание документа вместо просмотра
+  // Скачивание документа - улучшенная версия с прямым открытием окна
   const viewDocument = async (documentId: string) => {
     try {
       console.log(`Загрузка документа с ID: ${documentId} для скачивания`);
@@ -130,16 +130,48 @@ export default function AdminUsersPage() {
         contentUrl = `data:${data.mime_type};base64,${contentUrl}`;
       }
       
-      // Создаем временную ссылку и инициируем скачивание
-      const downloadLink = document.createElement('a');
-      downloadLink.href = contentUrl;
-      downloadLink.download = data.filename || 'документ';
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      document.body.removeChild(downloadLink);
-      
       // Показываем сообщение об успехе
-      setSuccessMessage(`Скачивание файла "${data.filename}" начато`);
+      setSuccessMessage(`Файл "${data.filename}" готов к скачиванию`);
+      
+      // Метод 1: Прямое открытие в новом окне с атрибутом download
+      const newWindow = window.open('');
+      if (newWindow) {
+        newWindow.document.write(`
+          <html>
+            <head>
+              <title>Скачивание ${data.filename}</title>
+            </head>
+            <body style="display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; font-family: Arial, sans-serif;">
+              <h3>Файл готов к скачиванию</h3>
+              <p>Если скачивание не началось автоматически, нажмите на ссылку ниже:</p>
+              <a href="${contentUrl}" download="${data.filename}" id="download-link" style="padding: 10px 20px; background-color: #4285f4; color: white; text-decoration: none; border-radius: 4px; margin-top: 20px;">Скачать ${data.filename}</a>
+              <script>
+                // Автоматически кликаем по ссылке через мгновение
+                setTimeout(function() {
+                  document.getElementById('download-link').click();
+                }, 1000);
+              </script>
+            </body>
+          </html>
+        `);
+        newWindow.document.close();
+      } else {
+        // Если не можем открыть новое окно, используем запасной вариант
+        // Метод 2: Создаем элемент и нажимаем на него
+        const downloadLink = document.createElement('a');
+        downloadLink.href = contentUrl;
+        downloadLink.download = data.filename || 'документ';
+        downloadLink.style.display = 'none';
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        
+        // Даем браузеру время на обработку клика перед удалением
+        setTimeout(() => {
+          document.body.removeChild(downloadLink);
+        }, 1000); // Добавляем задержку в 1 секунду
+      }
+      
+      // Показываем сообщение об успехе в течение 3-х секунд
       setTimeout(() => {
         setSuccessMessage('');
       }, 3000);

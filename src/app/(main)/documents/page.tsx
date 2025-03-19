@@ -203,31 +203,38 @@ export default function DocumentUploadPage() {
       
       console.log('Начинаем загрузку файла:', file.name, 'размер:', file.size, 'тип:', file.type);
       
-      // Создаем FormData для загрузки файла
-      const formData = new FormData();
-      formData.append('file', file);
+      // Загружаем файл в Supabase Storage вместо хранения base64 в базе данных
+      console.log('Загружаем файл в Supabase Storage');
       
-      // Читаем файл как ArrayBuffer для получения содержимого
-      const arrayBuffer = await file.arrayBuffer();
-      const bytes = new Uint8Array(arrayBuffer);
+      // Создаем уникальный путь для файла
+      const safeFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const storageFileName = `${Date.now()}_${safeFileName}`;
+      const filePath = `${user.id}/${storageFileName}`;
       
-      // Конвертируем в base64
-      let binary = '';
-      for (let i = 0; i < bytes.byteLength; i++) {
-        binary += String.fromCharCode(bytes[i]);
+      // Загружаем файл в хранилище
+      const { data: storageData, error: storageError } = await supabase.storage
+        .from('user_documents')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type
+        });
+      
+      if (storageError) {
+        console.error('Ошибка при загрузке в хранилище:', storageError);
+        throw new Error(`Ошибка при загрузке файла: ${storageError.message}`);
       }
-      const base64String = window.btoa(binary);
       
-      console.log('Файл успешно преобразован в base64, длина:', base64String.length);
+      console.log('Файл успешно загружен в хранилище:', storageData);
       
-      // Загрузка файла в базу данных
+      // Сохраняем только ссылку на файл в базе данных
       const { data, error } = await supabase
         .from('user_documents')
         .insert({
           user_id: user.id,
           filename: file.name,
           file_size: file.size,
-          content: base64String,
+          storage_path: filePath,  // Сохраняем путь к файлу вместо содержимого
           mime_type: file.type
         })
         .select();

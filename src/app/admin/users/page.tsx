@@ -96,164 +96,79 @@ export default function AdminUsersPage() {
     }
   }, [authorized]);
   
-  // Самый простой и надежный способ скачивания файлов
+  // Самая простая функция скачивания файлов напрямую из Storage
   const viewDocument = async (documentId: string) => {
     try {
-      console.log(`Загрузка документа с ID: ${documentId} для скачивания`);
+      console.log(`Загрузка документа с ID: ${documentId}`);
       
-      // Получаем информацию о документе - все необходимые поля
+      // Получаем информацию о документе
       const { data, error } = await supabase
         .from('user_documents')
         .select('*')
         .eq('id', documentId)
         .single();
       
-      if (error) {
-        console.error('Ошибка при загрузке информации о документе:', error);
-        throw error;
-      }
-      
-      if (!data) {
-        throw new Error('Документ не найден');
-      }
-
-      console.log('Документ получен:', { 
-        id: data.id,
-        имя: data.filename,
-        тип: data.mime_type,
-        размер: data.file_size
-      });
-      
-      // Подробный вывод полей документа для отладки
-      console.log('Полная информация о документе:', {
-        ...data,
-        storage_path_exists: !!data.storage_path,
-        content_exists: !!data.content,
-        content_length: data.content ? data.content.length : 0,
-        content_preview: data.content ? data.content.substring(0, 100) + '...' : null
-      });
-      
-      // Проверяем, является ли контент URL-ом
-      if (data.content && (data.content.startsWith('http://') || data.content.startsWith('https://'))) {
-        // Если это URL, открываем в новом окне
-        window.open(data.content, '_blank');
-        
-        setSuccessMessage(`Файл "${data.filename}" открыт в новом окне`);
-        setTimeout(() => setSuccessMessage(''), 3000);
-        
+      if (error || !data) {
+        console.error('Ошибка при получении документа:', error);
+        setError('Не удалось найти документ');
         return;
       }
       
-      // Проверяем наличие storage_path для Supabase Storage
+      console.log('Документ получен:', data);
+      
+      // Основная логика скачивания - приоритет storage_path
       if (data.storage_path) {
         try {
-          // Скачиваем из хранилища Supabase
+          console.log('Скачиваем из Supabase Storage:', data.storage_path);
+          
+          // Скачиваем из Supabase Storage
           const { data: fileData, error: downloadError } = await supabase.storage
             .from('user_documents')
             .download(data.storage_path);
-
+          
           if (downloadError || !fileData) {
-            throw new Error(`Ошибка при скачивании из хранилища: ${downloadError?.message || 'файл не найден'}`);
+            console.error('Ошибка при скачивании:', downloadError);
+            setError('Не удалось скачать файл из хранилища');
+            return;
           }
-
-          // Создаем ссылку для скачивания
+          
+          // Создаем URL и скачиваем
           const blobUrl = URL.createObjectURL(fileData);
           const link = document.createElement('a');
           link.href = blobUrl;
-          link.download = data.filename;
+          link.download = data.filename || 'документ';
           document.body.appendChild(link);
           link.click();
           
-          // Очищаем
+          // Очищаем ресурсы
           setTimeout(() => {
             document.body.removeChild(link);
             URL.revokeObjectURL(blobUrl);
           }, 100);
-
+          
           setSuccessMessage(`Файл "${data.filename}" скачивается`);
           setTimeout(() => setSuccessMessage(''), 3000);
-          
           return;
         } catch (storageError) {
           console.error('Ошибка при скачивании из хранилища:', storageError);
-          // Продолжаем с другими способами
+          setError('Ошибка при скачивании из хранилища');
         }
-      }
-      
-      // Прямое скачивание из таблицы базы данных
-      if (data.content) {
-        try {
-          console.log('Пробуем обработать содержимое документа');
-          const link = document.createElement('a');
-          
-          // Если это data URL
-          if (data.content.startsWith('data:')) {
-            link.href = data.content;
-            console.log('Обнаружен data URL');
-          } else {
-            // Проверяем, не является ли это PostgreSQL BYTEA форматом (\x...)
-            if (data.content.startsWith('\\x')) {
-              console.log('Обнаружен BYTEA формат, обрабатываем');
-              
-              // Удаляем префикс \x и преобразуем hex в base64
-              try {
-                // Удаляем префикс \x и все переносы строк
-                const hexString = data.content.replace(/\\x/, '').replace(/[\n\r\s]/g, '');
-                
-                // Преобразуем hex в ArrayBuffer
-                console.log('Длина HEX строки:', hexString.length);
-                
-                const byteArray = new Uint8Array(hexString.length / 2);
-                
-                // Преобразование каждой пары hex в байт
-                for (let i = 0; i < hexString.length; i += 2) {
-                  byteArray[i/2] = parseInt(hexString.substr(i, 2), 16);
-                }
-                
-                // Создаем Blob из массива байтов
-                const blob = new Blob([byteArray], { type: data.mime_type || 'application/octet-stream' });
-                link.href = URL.createObjectURL(blob);
-                console.log('Создан Blob из HEX данных');
-              } catch (hexError) {
-                console.error('Ошибка при обработке HEX:', hexError);
-                // Если не удалось, пробуем как обычный base64
-                link.href = `data:${data.mime_type || 'application/octet-stream'};base64,${btoa(data.content)}`;
-              }
-            } else {
-              // В остальных случаях пробуем обычный base64
-              try {
-                link.href = `data:${data.mime_type || 'application/octet-stream'};base64,${data.content}`;
-                console.log('Используем содержимое как base64');
-              } catch (base64Error) {
-                console.error('Ошибка при использовании base64:', base64Error);
-              }
-            }
-          }
-          
-          link.download = data.filename;
-          document.body.appendChild(link);
-          link.click();
-          
-          setTimeout(() => {
-            document.body.removeChild(link);
-          }, 100);
-          
-          setSuccessMessage(`Файл "${data.filename}" скачивается`);
+      } else {
+        // Если нет storage_path, проверяем наличие внешней ссылки в контенте
+        if (data.content && (data.content.startsWith('http://') || data.content.startsWith('https://'))) {
+          window.open(data.content, '_blank');
+          setSuccessMessage(`Файл "${data.filename}" открыт в новом окне`);
           setTimeout(() => setSuccessMessage(''), 3000);
-          
           return;
-        } catch (contentError) {
-          console.error('Ошибка при использовании содержимого:', contentError);
         }
+        
+        setError('Файл недоступен для скачивания - необходимо загрузить его в хранилище');
+        setTimeout(() => setError(''), 5000);
       }
-      
-      // Если все способы не удались
-      setError('Не удалось скачать файл. Попробуйте позже или свяжитесь с администратором.');
-      setTimeout(() => setError(''), 5000);
-      
     } catch (err: unknown) {
-      console.error('Error downloading document:', err);
+      console.error('Ошибка при скачивании:', err);
       setError(err instanceof Error ? err.message : 'Ошибка при скачивании документа');
+      setTimeout(() => setError(''), 5000);
     }
   };
   

@@ -154,10 +154,23 @@ export default function AdminOrdersPage() {
     }
   }
 
+  // Проверка авторизации через sessionStorage
+  const [authorized, setAuthorized] = useState(false);
+  
+  useEffect(() => {
+    const isAuthorized = typeof window !== 'undefined' && sessionStorage.getItem('admin_authenticated') === 'true';
+    setAuthorized(isAuthorized);
+    if (isAuthorized) {
+      setLoading(true); // Устанавливаем загрузку при проверке авторизации
+    }
+  }, []);
+  
   // Вызываем загрузку заказов при первом рендере и изменении сортировки
   useEffect(() => {
-    fetchOrders()
-  }, [dateSort])
+    if (authorized) {
+      fetchOrders()
+    }
+  }, [dateSort, authorized])
 
   // Фильтрация и поиск заказов
   const filteredOrders = orders.filter(order => {
@@ -410,6 +423,11 @@ export default function AdminOrdersPage() {
     
     const blob = new Blob([excelBuffer], { type: 'application/octet-stream' })
     saveAs(blob, fileName)
+  }
+
+  // Проверка авторизации перед рендерингом
+  if (!authorized && !loading) {
+    return <div className="container mx-auto p-4">Проверка прав доступа...</div>;
   }
 
   return (

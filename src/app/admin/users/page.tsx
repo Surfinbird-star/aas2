@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { useAuth } from '@/hooks/useAuth'
 import React from 'react'
 
 interface UserDocument {
@@ -37,14 +36,13 @@ export default function AdminUsersPage() {
   const [successMessage, setSuccessMessage] = useState<string>('');
   
   const router = useRouter();
-  const { user, isAdmin, isLoading } = useAuth();
+  const [authorized, setAuthorized] = useState(false);
 
-  // Проверка прав администратора - только если пользователь не авторизован вовсе
+  // Проверка авторизации через сессионное хранилище
   useEffect(() => {
-    if (!isLoading && !user) {
-      router.push('/admin/login');
-    }
-  }, [user, isLoading, router]);
+    const isAuthorized = typeof window !== 'undefined' && sessionStorage.getItem('admin_authenticated') === 'true';
+    setAuthorized(isAuthorized);
+  }, []);
 
   // Загрузка пользователей
   useEffect(() => {
@@ -93,10 +91,10 @@ export default function AdminUsersPage() {
       }
     }
     
-    if (user && !isLoading) {
+    if (authorized) {
       loadUsers();
     }
-  }, [user, isAdmin, isLoading]);
+  }, [authorized]);
   
   // Просмотр документа
   const viewDocument = async (documentId: string) => {
@@ -276,7 +274,7 @@ export default function AdminUsersPage() {
   };
 
   // Отображение админ-панели
-  if (isLoading || !user || !isAdmin) {
+  if (!authorized || loading) {
     return <div className="container mx-auto p-4">Проверка прав доступа...</div>;
   }
 

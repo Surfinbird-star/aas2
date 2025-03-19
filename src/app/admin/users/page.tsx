@@ -96,10 +96,10 @@ export default function AdminUsersPage() {
     }
   }, [authorized]);
   
-  // Просмотр документа - максимально простая реализация
+  // Скачивание документа вместо просмотра
   const viewDocument = async (documentId: string) => {
     try {
-      console.log(`Загрузка документа с ID: ${documentId}`);
+      console.log(`Загрузка документа с ID: ${documentId} для скачивания`);
       
       // Получаем содержимое документа
       const { data, error } = await supabase
@@ -107,12 +107,6 @@ export default function AdminUsersPage() {
         .select('content, mime_type, filename')
         .eq('id', documentId)
         .single();
-      
-      console.log('Полученные данные документа:', { 
-        тип: data?.mime_type,
-        имя: data?.filename,
-        контент_начало: data?.content?.substring(0, 50)
-      });
       
       if (error) {
         console.error('Ошибка при загрузке документа из БД:', error);
@@ -123,7 +117,12 @@ export default function AdminUsersPage() {
         throw new Error('Содержимое документа отсутствует');
       }
       
-      // Простой подход - добавляем префикс data: если его нет
+      console.log('Документ получен, подготовка к скачиванию:', { 
+        тип: data.mime_type,
+        имя: data.filename
+      });
+      
+      // Подготавливаем содержимое для скачивания
       let contentUrl = data.content;
       
       // Если это не URL и не data URL, добавляем префикс
@@ -131,24 +130,25 @@ export default function AdminUsersPage() {
         contentUrl = `data:${data.mime_type};base64,${contentUrl}`;
       }
       
-      // Устанавливаем информацию о просматриваемом документе
-      setViewingDocument({
-        id: documentId,
-        content: contentUrl,
-        mimeType: data.mime_type,
-        filename: data.filename || 'файл'
-      });
+      // Создаем временную ссылку и инициируем скачивание
+      const downloadLink = document.createElement('a');
+      downloadLink.href = contentUrl;
+      downloadLink.download = data.filename || 'документ';
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
       
-      console.log('Документ готов к просмотру:', {
-        id: documentId,
-        url: contentUrl,
-        mimeType: data.mime_type,
-        filename: data.filename
-      });
+      // Показываем сообщение об успехе
+      setSuccessMessage(`Скачивание файла "${data.filename}" начато`);
+      setTimeout(() => {
+        setSuccessMessage('');
+      }, 3000);
+      
+      console.log('Скачивание инициировано для файла:', data.filename);
       
     } catch (err: unknown) {
-      console.error('Error loading document:', err);
-      setError(err instanceof Error ? err.message : 'Ошибка при загрузке документа');
+      console.error('Error downloading document:', err);
+      setError(err instanceof Error ? err.message : 'Ошибка при скачивании документа');
     }
   };
   
@@ -393,7 +393,7 @@ export default function AdminUsersPage() {
                               onClick={() => viewDocument(doc.id)}
                               className="px-3 py-1 bg-gray-500 text-white hover:bg-gray-600 rounded text-xs transition duration-200"
                             >
-                              Просмотреть
+                              Скачать
                             </button>
                             <button
                               onClick={() => deleteDocument(doc.id)}
@@ -463,65 +463,7 @@ export default function AdminUsersPage() {
         </div>
       )}
       
-      {/* Модальное окно для просмотра документов - максимально простая версия */}
-      {viewingDocument && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] flex flex-col">
-            <div className="p-4 border-b flex justify-between items-center">
-              <h3 className="text-lg font-medium">{viewingDocument.filename}</h3>
-              <button
-                onClick={() => setViewingDocument(null)}
-                className="text-gray-400 hover:text-gray-500 focus:outline-none"
-              >
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            
-            {/* Упрощенное отображение всех документов с помощью тега iframe */}
-            <div className="p-4 flex-1 overflow-auto text-center">
-              {viewingDocument.mimeType.startsWith('image/') ? (
-                <img 
-                  src={viewingDocument.content} 
-                  alt={viewingDocument.filename} 
-                  className="max-w-full max-h-[70vh] mx-auto" 
-                />
-              ) : (
-                <div className="h-[70vh] flex flex-col items-center justify-center">
-                  <div className="mb-4">Открыть документ в новом окне или скачать:</div>
-                  <div className="flex space-x-4">
-                    <a 
-                      href={viewingDocument.content} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="px-4 py-2 bg-blue-500 text-white hover:bg-blue-600 rounded text-sm transition duration-200"
-                    >
-                      Открыть
-                    </a>
-                    <a 
-                      href={viewingDocument.content} 
-                      download={viewingDocument.filename}
-                      className="px-4 py-2 bg-gray-500 text-white hover:bg-gray-600 rounded text-sm transition duration-200"
-                    >
-                      Скачать
-                    </a>
-                  </div>
-                </div>
-              )}
-              
-              {/* Отладочная информация */}
-              <div className="mt-4 text-xs text-gray-500 border-t pt-2">
-                <div>MIME-type: {viewingDocument.mimeType}</div>
-                {viewingDocument.content.length > 100 
-                  ? <div>Ссылка: {viewingDocument.content.substring(0, 100)}...</div>
-                  : <div>Ссылка: {viewingDocument.content}</div>
-                }
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Убрано модальное окно для просмотра, теперь файлы скачиваются автоматически */}
     </div>
   );
 }

@@ -206,6 +206,16 @@ export default function DocumentUploadPage() {
       // Загружаем файл в Supabase Storage вместо хранения base64 в базе данных
       console.log('Загружаем файл в Supabase Storage');
       
+      // Проверяем существование бакета и создаем его при необходимости
+      const { data: buckets } = await supabase.storage.listBuckets();
+      if (!buckets || !buckets.find(b => b.name === 'user_documents')) {
+        console.log('Создаем бакет user_documents');
+        await supabase.storage.createBucket('user_documents', {
+          public: false,
+          fileSizeLimit: 10 * 1024 * 1024, // 10MB
+        });
+      }
+      
       // Создаем уникальный путь для файла
       const safeFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
       const storageFileName = `${Date.now()}_${safeFileName}`;

@@ -80,75 +80,125 @@ export default function AdminOrdersPage() {
   // Получение списка заказов
   const fetchOrders = async () => {
     setLoading(true)
+    setError(null)
+    
+    // Создаём тайм-аут для предотвращения бесконечной загрузки
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error('Тайм-аут загрузки данных. Проверьте коннект с базой данных.'))
+      }, 10000) // 10 секунд тайм-аут
+    })
+    
     try {
-      // Получаем заказы
-      const { data: ordersData, error: ordersError } = await supabase
-        .from('orders')
-        .select(`
-          id,
-          user_id,
-          status,
-          created_at,
-          profiles (
-            email,
-            first_name,
-            last_name
-          )
-        `)
-        .order('created_at', { ascending: dateSort === 'asc' })
+      // Запускаем запрос с тайм-аутом
+      const fetchDataPromise = async () => {
+        console.log('Начинаем загрузку заказов...')
+        
+        // Получаем заказы
+        const { data: ordersData, error: ordersError } = await supabase
+          .from('orders')
+          .select(`
+            id,
+            user_id,
+            status,
+            created_at,
+            profiles (
+              email,
+              first_name,
+              last_name
+            )
+          `)
+          .order('created_at', { ascending: dateSort === 'asc' })
+        
+        console.log('Заказы получены:', ordersData ? ordersData.length : 0, 'ошибка:', ordersError)
+        
+        if (ordersError) {
+          console.error('Ошибка при загрузке списка заказов:', ordersError)
+          throw ordersError
+        }
+        
+        if (!ordersData || ordersData.length === 0) {
+          // Если нет заказов, возвращаем пустой массив
+          return []
+        }
+        
+        // Приводим данные к типу OrderData[]
+        const typedOrdersData = ordersData as unknown as OrderData[]
+
+        // Для каждого заказа получаем его товары с обработкой ошибок для каждого заказа
+        const ordersWithItems = await Promise.all(
+          typedOrdersData.map(async (order) => {
+            try {
+              const { data: itemsData, error: itemsError } = await supabase
+                .from('order_items')
+                .select(`
+                  id,
+                  product_id,
+                  quantity,
+                  products (
+                    name,
+                    unit
+                  )
+                `)
+                .eq('order_id', order.id)
+
+              if (itemsError) {
+                console.error(`Ошибка при загрузке товаров для заказа ${order.id}:`, itemsError)
+                // В случае ошибки возвращаем заказ с пустым списком товаров
+                return {
+                  id: order.id,
+                  user_id: order.user_id,
+                  status: order.status as OrderStatus,
+                  created_at: order.created_at,
+                  user_email: order.profiles?.email || 'Нет данных',
+                  user_name: order.profiles?.first_name && order.profiles?.last_name 
+                    ? `${order.profiles.first_name} ${order.profiles.last_name}`
+                    : 'Неизвестный пользователь',
+                  items: []
+                }
+              }
+
+              // Преобразуем данные заказа к нужному формату
+              const items: OrderItem[] = (itemsData || []).map(item => ({
+                id: item.id,
+                product_id: item.product_id,
+                quantity: item.quantity,
+                product_name: item.products && 'name' in item.products ? item.products.name as string : 'Неизвестный товар',
+                product_unit: item.products && 'unit' in item.products ? item.products.unit as string : 'шт.'
+              }))
+
+              return {
+                id: order.id,
+                user_id: order.user_id,
+                status: order.status as OrderStatus,
+                created_at: order.created_at,
+                user_email: order.profiles?.email || 'Нет данных',
+                user_name: order.profiles?.first_name && order.profiles?.last_name 
+                  ? `${order.profiles.first_name} ${order.profiles.last_name}`
+                  : 'Неизвестный пользователь',
+                items
+              }
+            } catch (e) {
+              console.error(`Ошибка при обработке заказа ${order.id}:`, e)
+              // В случае ошибки пропускаем этот заказ
+              return null
+            }
+          })
+        )
+        
+        // Фильтруем null значения
+        return ordersWithItems.filter(order => order !== null) as Order[]
+      }
       
-      // Приводим данные к типу OrderData[]
-      const typedOrdersData = ordersData as unknown as OrderData[]
-
-      if (ordersError) throw ordersError
-
-      // Для каждого заказа получаем его товары
-      const ordersWithItems = await Promise.all(
-        (typedOrdersData || []).map(async (order) => {
-          const { data: itemsData, error: itemsError } = await supabase
-            .from('order_items')
-            .select(`
-              id,
-              product_id,
-              quantity,
-              products (
-                name,
-                unit
-              )
-            `)
-            .eq('order_id', order.id)
-
-          if (itemsError) throw itemsError
-
-          // Преобразуем данные заказа к нужному формату
-          const items: OrderItem[] = (itemsData || []).map(item => ({
-            id: item.id,
-            product_id: item.product_id,
-            quantity: item.quantity,
-            product_name: item.products && 'name' in item.products ? item.products.name as string : 'Неизвестный товар',
-            product_unit: item.products && 'unit' in item.products ? item.products.unit as string : 'шт.'
-          }))
-
-          const orderObj: Order = {
-            id: order.id,
-            user_id: order.user_id,
-            status: order.status as OrderStatus,
-            created_at: order.created_at,
-            user_email: order.profiles?.email || 'Нет данных',
-            user_name: order.profiles?.first_name && order.profiles?.last_name 
-              ? `${order.profiles.first_name} ${order.profiles.last_name}`
-              : 'Неизвестный пользователь',
-            items
-          }
-          
-          return orderObj
-        })
-      )
-
-      setOrders(ordersWithItems)
-    } catch (error) {
+      // Запускаем запрос с тайм-аутом
+      const result = await Promise.race([fetchDataPromise(), timeoutPromise])
+      setOrders(result as Order[])
+      
+    } catch (error: any) {
       console.error('Ошибка при загрузке заказов:', error)
-      setError('Не удалось загрузить заказы. Пожалуйста, попробуйте позже.')
+      // Устанавливаем пустой массив заказов, чтобы не блокировать интерфейс
+      setOrders([])
+      setError(error.message || 'Не удалось загрузить заказы. Проверьте политики доступа в Supabase.')
     } finally {
       setLoading(false)
     }

@@ -96,82 +96,63 @@ export default function AdminUsersPage() {
     }
   }, [authorized]);
   
-  // Скачивание документа - улучшенная версия с прямым открытием окна
+  // Прямое скачивание документа из хранилища Supabase
   const viewDocument = async (documentId: string) => {
     try {
       console.log(`Загрузка документа с ID: ${documentId} для скачивания`);
       
-      // Получаем содержимое документа
+      // Получаем информацию о документе - storage_path и файловые атрибуты
       const { data, error } = await supabase
         .from('user_documents')
-        .select('content, mime_type, filename')
+        .select('storage_path, filename, mime_type')
         .eq('id', documentId)
         .single();
       
       if (error) {
-        console.error('Ошибка при загрузке документа из БД:', error);
+        console.error('Ошибка при загрузке информации о документе:', error);
         throw error;
       }
       
-      if (!data || !data.content) {
-        throw new Error('Содержимое документа отсутствует');
+      if (!data || !data.storage_path) {
+        throw new Error('Путь к файлу отсутствует в базе данных');
       }
       
-      console.log('Документ получен, подготовка к скачиванию:', { 
-        тип: data.mime_type,
-        имя: data.filename
+      console.log('Информация о документе получена:', { 
+        путь: data.storage_path,
+        имя: data.filename,
+        тип: data.mime_type
       });
       
-      // Подготавливаем содержимое для скачивания
-      let contentUrl = data.content;
-      
-      // Если это не URL и не data URL, добавляем префикс
-      if (!contentUrl.startsWith('http') && !contentUrl.startsWith('data:')) {
-        contentUrl = `data:${data.mime_type};base64,${contentUrl}`;
+      // Создаём URL для прямого скачивания из хранилища Supabase
+      const { data: fileData, error: downloadError } = await supabase.storage
+        .from('user_documents') // Укажите название вашего хранилища (bucket)
+        .download(data.storage_path);
+
+      if (downloadError) {
+        console.error('Ошибка при загрузке файла из хранилища:', downloadError);
+        throw downloadError;
       }
+
+      // Создаём URL для загруженного файла
+      const blobUrl = URL.createObjectURL(fileData);
       
       // Показываем сообщение об успехе
       setSuccessMessage(`Файл "${data.filename}" готов к скачиванию`);
       
-      // Метод 1: Прямое открытие в новом окне с атрибутом download
-      const newWindow = window.open('');
-      if (newWindow) {
-        newWindow.document.write(`
-          <html>
-            <head>
-              <title>Скачивание ${data.filename}</title>
-            </head>
-            <body style="display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; font-family: Arial, sans-serif;">
-              <h3>Файл готов к скачиванию</h3>
-              <p>Если скачивание не началось автоматически, нажмите на ссылку ниже:</p>
-              <a href="${contentUrl}" download="${data.filename}" id="download-link" style="padding: 10px 20px; background-color: #4285f4; color: white; text-decoration: none; border-radius: 4px; margin-top: 20px;">Скачать ${data.filename}</a>
-              <script>
-                // Автоматически кликаем по ссылке через мгновение
-                setTimeout(function() {
-                  document.getElementById('download-link').click();
-                }, 1000);
-              </script>
-            </body>
-          </html>
-        `);
-        newWindow.document.close();
-      } else {
-        // Если не можем открыть новое окно, используем запасной вариант
-        // Метод 2: Создаем элемент и нажимаем на него
-        const downloadLink = document.createElement('a');
-        downloadLink.href = contentUrl;
-        downloadLink.download = data.filename || 'документ';
-        downloadLink.style.display = 'none';
-        document.body.appendChild(downloadLink);
-        downloadLink.click();
-        
-        // Даем браузеру время на обработку клика перед удалением
-        setTimeout(() => {
-          document.body.removeChild(downloadLink);
-        }, 1000); // Добавляем задержку в 1 секунду
-      }
+      // Создаем ссылку для скачивания
+      const downloadLink = document.createElement('a');
+      downloadLink.href = blobUrl;
+      downloadLink.download = data.filename || 'документ';
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
       
-      // Показываем сообщение об успехе в течение 3-х секунд
+      // Даем браузеру время на обработку клика и очищаем ссылку
+      setTimeout(() => {
+        document.body.removeChild(downloadLink);
+        URL.revokeObjectURL(blobUrl); // Очищаем ссылку на Blob для экономии памяти
+      }, 2000);
+      
+      // Скрываем сообщение об успехе через 3 секунды
       setTimeout(() => {
         setSuccessMessage('');
       }, 3000);

@@ -185,32 +185,40 @@ export default function DocumentUploadPage() {
       return;
     }
     
+    // Проверяем тип файла
+    const allowedMimeTypes = [
+      'image/jpeg', 'image/jpg', 'image/png', 
+      'application/pdf',
+      'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+    
+    if (!allowedMimeTypes.includes(file.type)) {
+      setError('Неподдерживаемый формат файла. Поддерживаемые форматы: PDF, DOC, DOCX, JPG, PNG.');
+      return;
+    }
+    
     try {
       setUploading(true);
+      setError('');
       
-      // Используем FileReader для безопасного преобразования в base64
-      const reader = new FileReader();
+      console.log('Начинаем загрузку файла:', file.name, 'размер:', file.size, 'тип:', file.type);
       
-      // Создаем промис для ожидания загрузки файла
-      const readFileAsDataURL = new Promise<string>((resolve, reject) => {
-        reader.onload = () => {
-          // reader.result содержит строку с данными в формате data:URL
-          // нам нужно удалить префикс, чтобы получить чистый base64
-          const base64 = typeof reader.result === 'string' 
-            ? reader.result.split(',')[1] 
-            : '';
-          resolve(base64);
-        };
-        reader.onerror = () => {
-          reject(new Error('Ошибка чтения файла'));
-        };
-      });
+      // Создаем FormData для загрузки файла
+      const formData = new FormData();
+      formData.append('file', file);
       
-      // Запускаем чтение файла в формате base64
-      reader.readAsDataURL(file);
+      // Читаем файл как ArrayBuffer для получения содержимого
+      const arrayBuffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
       
-      // Ждем завершения чтения и получаем base64 строку
-      const base64String = await readFileAsDataURL;
+      // Конвертируем в base64
+      let binary = '';
+      for (let i = 0; i < bytes.byteLength; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const base64String = window.btoa(binary);
+      
+      console.log('Файл успешно преобразован в base64, длина:', base64String.length);
       
       // Загрузка файла в базу данных
       const { data, error } = await supabase
@@ -225,14 +233,20 @@ export default function DocumentUploadPage() {
         .select();
       
       if (error) {
-        console.error('Error uploading document:', error);
-        setError(`Ошибка при загрузке документа: ${error.message}`);
-        return;
+        console.error('Ошибка при загрузке документа в базу данных:', error);
+        throw new Error(`Ошибка при загрузке документа: ${error.message}`);
       }
+      
+      console.log('Документ успешно загружен в базу данных:', data);
       
       // Обновляем список документов
       if (data && data.length > 0) {
+        // Ставим новый документ в начало списка
         setUserDocuments([...data, ...userDocuments]);
+        
+        console.log('Список документов обновлен', data[0].id);
+      } else {
+        console.warn('Документ загружен, но не получен ответ');
       }
       
       setSuccess(true);
@@ -246,9 +260,9 @@ export default function DocumentUploadPage() {
         fileInputRef.current.value = '';
       }
       
-    } catch (err) {
-      console.error('Error processing file:', err);
-      setError('Произошла ошибка при обработке файла. Пожалуйста, попробуйте еще раз.');
+    } catch (err: any) {
+      console.error('Ошибка при обработке файла:', err);
+      setError(err.message || 'Произошла ошибка при обработке файла. Пожалуйста, попробуйте еще раз.');
     } finally {
       setUploading(false);
     }

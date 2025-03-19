@@ -119,92 +119,111 @@ export default function AdminUsersPage() {
       
       console.log(`Документ загружен: ${data.filename}, тип: ${data.mime_type}`);
       
-      // Создаем временный iframe для отображения документа
-      const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      document.body.appendChild(iframe);
+      // Получаем чистые base64 данные без префикса
+      let base64Data = data.content;
       
-      // Создаем документ с отображением изображения
-      const doc = iframe.contentDocument;
-      if (!doc) {
-        document.body.removeChild(iframe);
-        throw new Error('Не удалось создать временный документ');
+      // Если начинается с data:, извлекаем только base64 часть
+      if (base64Data.startsWith('data:')) {
+        const commaIndex = base64Data.indexOf(',');
+        if (commaIndex !== -1) {
+          base64Data = base64Data.substring(commaIndex + 1);
+        }
       }
       
-      let content = data.content;
-      
-      // Если содержимое не начинается с "data:", добавляем префикс
-      if (!content.startsWith('data:')) {
-        content = `data:${data.mime_type};base64,${content}`;
+      // Преобразуем base64 в Blob
+      try {
+        // Сначала преобразуем в бинарную строку
+        const binaryString = window.atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        
+        // Преобразуем каждый символ в соответствующий байт
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        // Создаем Blob из байтового массива
+        const blob = new Blob([bytes], { type: data.mime_type });
+        
+        // Создаем объектный URL для Blob
+        const blobUrl = URL.createObjectURL(blob);
+        
+        // Открываем документ в зависимости от его типа
+        if (data.mime_type.startsWith('image/')) {
+          // Открываем изображение в новом окне с красивым форматированием
+          const win = window.open();
+          if (!win) {
+            alert('Браузер заблокировал открытие нового окна');
+            return;
+          }
+          
+          win.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <title>${data.filename}</title>
+              <style>
+                body {
+                  margin: 0;
+                  padding: 20px;
+                  display: flex;
+                  flex-direction: column;
+                  justify-content: center;
+                  align-items: center;
+                  min-height: 100vh;
+                  background: #f5f5f5;
+                  font-family: Arial, sans-serif;
+                }
+                .container {
+                  background: white;
+                  padding: 20px;
+                  border-radius: 8px;
+                  box-shadow: 0 0 20px rgba(0,0,0,0.1);
+                  text-align: center;
+                  max-width: 90%;
+                }
+                h2 {
+                  color: #333;
+                  margin-top: 0;
+                }
+                img {
+                  max-width: 100%;
+                  max-height: 70vh;
+                  display: block;
+                  margin: 20px auto;
+                  border-radius: 4px;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <h2>${data.filename}</h2>
+                <img src="${blobUrl}" alt="${data.filename}" />
+              </div>
+            </body>
+            </html>
+          `);
+          win.document.close();
+        } else if (data.mime_type === 'application/pdf') {
+          // PDF открываем напрямую - браузер сам отобразит его
+          window.open(blobUrl, '_blank');
+        } else {
+          // Для других типов файлов предлагаем скачать
+          const a = document.createElement('a');
+          a.href = blobUrl;
+          a.download = data.filename || 'документ';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        }
+        
+        // Освобождаем URL через 10 секунд
+        setTimeout(() => {
+          URL.revokeObjectURL(blobUrl);
+        }, 10000);
+      } catch (blobError) {
+        console.error('Ошибка при создании Blob:', blobError);
+        setError('Не удалось обработать данные документа. Возможно, формат повреждён.');
       }
-      
-      // Создаем HTML с изображением
-      doc.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>${data.filename}</title>
-          <style>
-            body {
-              margin: 0;
-              padding: 0;
-              display: flex;
-              justify-content: center;
-              align-items: center;
-              min-height: 100vh;
-              background: #f5f5f5;
-            }
-            img, object {
-              max-width: 95%;
-              max-height: 95vh;
-              box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            }
-            .error {
-              color: red;
-              font-family: Arial, sans-serif;
-              padding: 20px;
-              text-align: center;
-              background: white;
-              border-radius: 5px;
-              box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            }
-          </style>
-        </head>
-        <body>
-      `);
-      
-      // Добавляем изображение с обработкой ошибок
-      if (data.mime_type.startsWith('image/')) {
-        doc.write(`
-          <img src="${content}" alt="${data.filename}" onerror="
-            document.body.innerHTML = '<div class=\'error\'>Не удалось загрузить изображение.</div>';
-          ">
-        `);
-      } else if (data.mime_type === 'application/pdf') {
-        doc.write(`
-          <object data="${content}" type="application/pdf" width="100%" height="100%">
-            <div class="error">Не удалось загрузить PDF. Возможно, ваш браузер не поддерживает встроенный просмотр PDF.</div>
-          </object>
-        `);
-      } else {
-        doc.write(`<div class="error">Формат ${data.mime_type} не поддерживает предварительный просмотр.</div>`);
-      }
-      
-      doc.write('</body></html>');
-      doc.close();
-
-      // Открываем iframe в новом окне
-      const win = window.open('', '_blank');
-      if (win) {
-        win.document.write(doc.documentElement.outerHTML);
-        win.document.close();
-      } else {
-        alert('Браузер заблокировал открытие нового окна.');
-      }
-      
-      // Удаляем временный iframe
-      document.body.removeChild(iframe);
-      
     } catch (err: unknown) {
       console.error('Error loading document:', err);
       setError(err instanceof Error ? err.message : 'Ошибка при загрузке документа');

@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { uploadFile, getFileUrl } from '@/lib/file-storage';
 import { useAuth } from '@/hooks/useAuth';
 import Link from 'next/link';
 
@@ -206,46 +207,39 @@ export default function DocumentUploadPage() {
       // Загружаем файл в Supabase Storage вместо хранения base64 в базе данных
       console.log('Загружаем файл в Supabase Storage');
       
-      // Не пытаемся создать бакет здесь - он уже создан при инициализации
-      // через сервисный ключ в init-storage.ts
+      // Используем бакет, созданный в init-storage.ts
       
       // Создаем уникальный путь для файла
       const safeFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
       const storageFileName = `${Date.now()}_${safeFileName}`;
       const filePath = `${user.id}/${storageFileName}`;
       
-      // Загружаем файл в хранилище
-      const { data: storageData, error: storageError } = await supabase.storage
-        .from('user_documents')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false,
-          contentType: file.type
-        });
+      // Используем серверный API для загрузки файлов
+      // сервер имеет админский доступ и может обойти RLS
+      console.log('Загружаем файл через серверный API');
       
-      if (storageError) {
-        console.error('Ошибка при загрузке в хранилище:', storageError);
-        throw new Error(`Ошибка при загрузке файла: ${storageError.message}`);
+      // Создаем FormData для отправки файла на сервер
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('userId', user.id);
+      
+      // Отправляем запрос на серверный API
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        console.error('Ошибка при загрузке файла:', result);
+        throw new Error(result.error || 'Ошибка при загрузке файла');
       }
       
-      console.log('Файл успешно загружен в хранилище:', storageData);
+      console.log('Файл успешно загружен через API:', result);
       
-      // Сохраняем только ссылку на файл в базе данных
-      const { data, error } = await supabase
-        .from('user_documents')
-        .insert({
-          user_id: user.id,
-          filename: file.name,
-          file_size: file.size,
-          storage_path: filePath,  // Сохраняем путь к файлу вместо содержимого
-          mime_type: file.type
-        })
-        .select();
-      
-      if (error) {
-        console.error('Ошибка при загрузке документа в базу данных:', error);
-        throw new Error(`Ошибка при загрузке документа: ${error.message}`);
-      }
+      // API уже сохранил данные в базу, получаем их
+      const data = result.document;
       
       console.log('Документ успешно загружен в базу данных:', data);
       

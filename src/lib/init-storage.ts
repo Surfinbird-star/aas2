@@ -14,6 +14,8 @@ const adminSupabase = createClient(supabaseUrl, supabaseServiceKey);
  */
 export const initStorage = async () => {
   try {
+    console.log('Начинаем инициализацию хранилища');
+    
     // Проверяем наличие бакета user_documents через админский клиент
     const { data: buckets, error: listError } = await adminSupabase.storage.listBuckets();
     
@@ -21,6 +23,8 @@ export const initStorage = async () => {
       console.error('Ошибка при проверке бакетов:', listError);
       return;
     }
+    
+    console.log('Список бакетов:', buckets?.map(b => b.name).join(', '));
     
     // Проверяем, существует ли уже бакет user_documents
     const userDocsBucketExists = buckets?.some(bucket => bucket.name === 'user_documents');
@@ -30,7 +34,7 @@ export const initStorage = async () => {
       
       // Создаем новый бакет для документов пользователей используя админский клиент
       const { error: createError } = await adminSupabase.storage.createBucket('user_documents', {
-        public: false, // Документы не должны быть публично доступны
+        public: true, // Делаем бакет публичным
         fileSizeLimit: 10 * 1024 * 1024, // 10MB лимит на файл
       });
       
@@ -39,21 +43,44 @@ export const initStorage = async () => {
       } else {
         console.log('Бакет user_documents успешно создан');
         
-        // Настраиваем разрешения для бакета
-        // Делаем бакет публичным для доступа к документам
-        const { error: updateError } = await adminSupabase.storage.updateBucket('user_documents', {
-          public: true, // Делаем бакет публичным
-          fileSizeLimit: 10 * 1024 * 1024,
-        });
-        
-        if (updateError) {
-          console.error('Ошибка при обновлении настроек бакета:', updateError);
-        } else {
-          console.log('Настройки бакета обновлены');
+        // Создаем политику доступа "Allow All"
+        try {
+          // Выполняем SQL запрос напрямую в базу данных
+          const { error: sqlError } = await adminSupabase.rpc('execute_sql', {
+            query: `
+              -- Создаем политику для чтения и записи для всех пользователей
+              CREATE POLICY "Allow All" ON storage.objects FOR ALL TO authenticated, anon
+              USING (bucket_id = 'user_documents') WITH CHECK (bucket_id = 'user_documents');
+            `
+          });
+          
+          if (sqlError) {
+            console.error('Ошибка при создании политики доступа:', sqlError);
+          } else {
+            console.log('Политика доступа "Allow All" успешно создана');
+          }
+        } catch (err) {
+          console.error('Ошибка при выполнении SQL:', err);
         }
       }
     } else {
       console.log('Бакет user_documents уже существует');
+      
+      try {
+        // Обновляем бакет, делаем его публичным
+        const { error: updateError } = await adminSupabase.storage.updateBucket('user_documents', {
+          public: true,
+          fileSizeLimit: 10 * 1024 * 1024
+        });
+        
+        if (updateError) {
+          console.error('Ошибка при обновлении бакета:', updateError);
+        } else {
+          console.log('Бакет обновлен до публичного');
+        }
+      } catch (err) {
+        console.error('Ошибка при обновлении бакета:', err);
+      }
     }
   } catch (error) {
     console.error('Ошибка при инициализации хранилища:', error);

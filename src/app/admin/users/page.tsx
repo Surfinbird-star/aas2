@@ -96,15 +96,15 @@ export default function AdminUsersPage() {
     }
   }, [authorized]);
   
-  // Самый простой способ скачивания - напрямую через публичный URL
+  // Новая функция скачивания, которая работает с base64 содержимым
   const viewDocument = async (documentId: string) => {
     try {
       console.log(`Загрузка документа с ID: ${documentId} для скачивания`);
       
-      // Получаем информацию о документе - url и файловые атрибуты
+      // Получаем информацию о документе - содержимое, имя и MIME-тип
       const { data, error } = await supabase
         .from('user_documents')
-        .select('content, filename')
+        .select('content, filename, mime_type')
         .eq('id', documentId)
         .single();
       
@@ -119,21 +119,52 @@ export default function AdminUsersPage() {
 
       console.log('Документ получен:', { 
         имя: data.filename,
-        содержимое: data.content.substring(0, 50) + '...',
+        тип: data.mime_type,
+        длина_содержимого: data.content.length
       });
       
-      // Прямое открытие ссылки в новом окне - самый надежный способ
-      window.open(data.content, '_blank');
+      // Создаем бинарные данные из base64
+      const byteCharacters = atob(data.content);
+      const byteArrays = [];
+      
+      for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+        const slice = byteCharacters.slice(offset, offset + 512);
+        
+        const byteNumbers = new Array(slice.length);
+        for (let i = 0; i < slice.length; i++) {
+          byteNumbers[i] = slice.charCodeAt(i);
+        }
+        
+        const byteArray = new Uint8Array(byteNumbers);
+        byteArrays.push(byteArray);
+      }
+      
+      // Создаем Blob из бинарных данных
+      const blob = new Blob(byteArrays, {type: data.mime_type || 'application/octet-stream'});
+      const blobUrl = URL.createObjectURL(blob);
+      
+      // Создаем ссылку для скачивания
+      const downloadLink = document.createElement('a');
+      downloadLink.href = blobUrl;
+      downloadLink.download = data.filename || 'документ';
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      
+      // Удаляем элемент и освобождаем URL для экономии памяти
+      setTimeout(() => {
+        document.body.removeChild(downloadLink);
+        URL.revokeObjectURL(blobUrl);
+      }, 100);
       
       // Показываем сообщение об успехе
-      setSuccessMessage(`Файл "${data.filename}" открыт в новой вкладке. Сохраните его из браузера`);
+      setSuccessMessage(`Файл "${data.filename}" скачивается`);
       
-      // Скрываем сообщение об успехе через 5 секунд
+      // Скрываем сообщение об успехе через 3 секунды
       setTimeout(() => {
         setSuccessMessage('');
-      }, 5000);
+      }, 3000);
       
-      console.log('Файл открыт в новой вкладке:', data.filename);
+      console.log('Файл успешно скачан:', data.filename);
       
     } catch (err: unknown) {
       console.error('Error downloading document:', err);

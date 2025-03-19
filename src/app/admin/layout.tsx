@@ -108,10 +108,17 @@ export default function AdminLayout({
     );
   }
   
+  // Если нет авторизации, перенаправляем на страницу входа
   if (!isAuthenticated) {
+    if (typeof window !== 'undefined') {
+      // Устанавливаем флаг перенаправления, чтобы предотвратить зацикливание
+      sessionStorage.setItem('admin_redirect', 'true');
+      window.location.replace('/admin/login');
+    }
+    // Показываем загрузку, пока происходит перенаправление
     return (
       <div className="min-h-screen flex justify-center items-center bg-gray-100">
-        <div className="text-gray-500">Нет доступа. <a href="/admin/login" className="text-blue-500 underline">Войти</a></div>
+        <div className="text-gray-500">Перенаправление на страницу входа...</div>
       </div>
     );
   }

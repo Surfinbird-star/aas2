@@ -124,6 +124,15 @@ export default function AdminUsersPage() {
         размер: data.file_size
       });
       
+      // Подробный вывод полей документа для отладки
+      console.log('Полная информация о документе:', {
+        ...data,
+        storage_path_exists: !!data.storage_path,
+        content_exists: !!data.content,
+        content_length: data.content ? data.content.length : 0,
+        content_preview: data.content ? data.content.substring(0, 100) + '...' : null
+      });
+      
       // Проверяем, является ли контент URL-ом
       if (data.content && (data.content.startsWith('http://') || data.content.startsWith('https://'))) {
         // Если это URL, открываем в новом окне

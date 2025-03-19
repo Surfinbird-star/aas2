@@ -121,15 +121,37 @@ export default function AdminUsersPage() {
       
       console.log(`Документ загружен: ${data.filename}, тип: ${data.mime_type}, размер: ${data.content.length} символов`);
       
-      // НЕ выполняем никакой обработки данных - это может повредить бинарные форматы!
-      // Просто используем данные как есть
-      
-      setViewingDocument({
-        id: documentId,
-        content: data.content, // Используем оригинальные данные без обработки
-        mimeType: data.mime_type,
-        filename: data.filename
-      });
+      // Создаем Blob и открываем его в новом окне
+      try {
+        // Декодируем base64 в бинарные данные
+        let base64Content = data.content;
+        // Убираем префикс data:..;base64, если он есть
+        if (base64Content.includes(',')) {
+          base64Content = base64Content.split(',')[1];
+        }
+
+        const binaryString = atob(base64Content);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        // Создаем Blob из бинарных данных
+        const blob = new Blob([bytes], { type: data.mime_type });
+        const blobUrl = URL.createObjectURL(blob);
+        
+        // Открываем URL в новом окне
+        window.open(blobUrl, '_blank');
+        
+        // Для чистоты освобождаем URL когда он больше не нужен
+        setTimeout(() => {
+          URL.revokeObjectURL(blobUrl);
+        }, 60000); // Освобождаем через минуту
+        
+      } catch (blobError) {
+        console.error('Ошибка при создании Blob:', blobError);
+        throw new Error('Не удалось открыть документ. Возможно, данные повреждены.');
+      }
     } catch (err: unknown) {
       console.error('Error loading document:', err);
       setError(err instanceof Error ? err.message : 'Ошибка при загрузке документа');
@@ -447,101 +469,7 @@ export default function AdminUsersPage() {
         </div>
       )}
       
-      {/* Модальное окно для просмотра документа */}
-      {viewingDocument && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50" onClick={closeDocumentView}>
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="p-4 border-b flex justify-between items-center">
-              <h3 className="text-lg font-semibold">{viewingDocument.filename}</h3>
-              <button
-                onClick={closeDocumentView}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="flex-1 overflow-auto p-4">
-              {viewingDocument.mimeType.startsWith('image/') ? (
-                <div className="text-center">
-                  <p className="mb-2">Изображение: {viewingDocument.filename}</p>
-                  {/* Используем обработчик ошибок для изображения */}
-                  <img
-                    src={`data:${viewingDocument.mimeType};base64,${viewingDocument.content}`}
-                    alt={viewingDocument.filename}
-                    className="max-w-full max-h-[60vh] mx-auto border"
-                    onLoad={() => {
-                      console.log('Изображение успешно загружено:', viewingDocument.filename);
-                      // Сбрасываем ошибку, если она была установлена ранее
-                      if (error) setError(null);
-                    }}
-                    onError={(e) => {
-                      e.currentTarget.onerror = null;
-                      console.error('Ошибка загрузки изображения:', viewingDocument.filename);
-                      console.log(`Тип MIME: ${viewingDocument.mimeType}, длина base64: ${viewingDocument.content.length}`);
-                      
-                      // Пробуем альтернативный формат загрузки для PNG
-                      if (viewingDocument.mimeType.includes('png')) {
-                        try {
-                          console.log('Пробуем альтернативный формат для PNG...');
-                          // Очищаем префикс data-URL если он уже есть
-                          let base64Data = viewingDocument.content;
-                          if (base64Data.includes(',')) {
-                            base64Data = base64Data.split(',')[1];
-                          }
-                          e.currentTarget.src = `data:image/png;base64,${base64Data}`;
-                          return;
-                        } catch (err) {
-                          console.error('Альтернативный метод не сработал:', err);
-                        }
-                      }
-                      
-                      // Если альтернативный метод не сработал или это не PNG
-                      e.currentTarget.src = '/placeholder-image.png';
-                      setError('Не удалось загрузить изображение. Формат данных некорректен.');
-                    }}
-                  />
-                </div>
-              ) : viewingDocument.mimeType === 'application/pdf' ? (
-                <div className="h-[70vh]">
-                  <iframe
-                    src={`data:${viewingDocument.mimeType};base64,${viewingDocument.content}`}
-                    className="w-full h-full"
-                  />
-                </div>
-              ) : (
-                <div className="p-4 bg-gray-100 rounded">
-                  <p>Предпросмотр для этого типа файла недоступен.</p>
-                  <p>Тип файла: {viewingDocument.mimeType}</p>
-                  <button
-                    onClick={() => {
-                      try {
-                        const blob = new Blob(
-                          [Uint8Array.from(atob(viewingDocument.content), c => c.charCodeAt(0))], 
-                          { type: viewingDocument.mimeType }
-                        );
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = viewingDocument.filename;
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        URL.revokeObjectURL(url);
-                      } catch (err) {
-                        console.error('Ошибка скачивания файла:', err);
-                        setError('Не удалось скачать файл. Возможно, данные повреждены.');
-                      }
-                    }}
-                    className="mt-2 inline-block py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700"
-                  >
-                    Скачать документ
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Модальное окно для просмотра документа было удалено - документы теперь открываются в новом окне браузера */}
     </div>
   );
 }

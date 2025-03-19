@@ -59,14 +59,23 @@ export default function AdminLayout({
   // Функция для выхода из аккаунта
   const handleLogout = async () => {
     try {
-      // Удаляем информацию об авторизации
+      // Сначала очищаем состояние аутентификации в приложении
+      setIsAuthenticated(false);
+      
+      // Затем удаляем информацию об авторизации из sessionStorage
       sessionStorage.removeItem('admin_authenticated');
+      
+      // И только после этого выходим из Supabase
       await supabase.auth.signOut();
-      window.location.href = '/admin/login';
+      
+      // Перенаправляем пользователя на страницу входа
+      // Используем жесткое перенаправление с заменой текущей страницы в истории браузера
+      window.location.replace('/admin/login');
     } catch (error) {
       console.error('Ошибка при выходе из аккаунта:', error);
       sessionStorage.removeItem('admin_authenticated');
-      window.location.href = '/admin/login';
+      setIsAuthenticated(false);
+      window.location.replace('/admin/login');
     }
   }
 

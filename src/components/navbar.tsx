@@ -3,10 +3,26 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
+import { supabase } from '@/lib/supabase'
 
 export default function Navbar() {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
+  
+  // Функция для выхода из аккаунта
+  const handleLogout = async () => {
+    try {
+      // Выходим из Supabase
+      await supabase.auth.signOut()
+      
+      // Перенаправляем на страницу входа
+      window.location.replace('/login')
+    } catch (error) {
+      console.error('Ошибка при выходе из аккаунта:', error)
+      // В случае ошибки все равно перенаправляем на страницу входа
+      window.location.replace('/login')
+    }
+  }
 
   // Проверяем, что пользователь авторизован и находится в основном разделе
   // URL не содержит '/(main)' - это внутренняя организация файлов
@@ -83,7 +99,7 @@ export default function Navbar() {
               Документы
             </Link>
             <button 
-              onClick={() => {/* Здесь будет логика выхода */}}
+              onClick={handleLogout}
               className="px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700"
             >
               Выйти
@@ -133,7 +149,7 @@ export default function Navbar() {
               Документы
             </Link>
             <button 
-              onClick={() => {/* Здесь будет логика выхода */}}
+              onClick={handleLogout}
               className="block w-full text-left px-3 py-2 rounded-md text-base font-medium hover:bg-blue-700"
             >
               Выйти

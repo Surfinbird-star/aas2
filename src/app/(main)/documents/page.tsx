@@ -214,32 +214,35 @@ export default function DocumentUploadPage() {
       const storageFileName = `${Date.now()}_${safeFileName}`;
       const filePath = `${user.id}/${storageFileName}`;
       
-      // Используем серверный API для загрузки файлов
-      // сервер имеет админский доступ и может обойти RLS
-      console.log('Загружаем файл через серверный API');
+      // Самый простой способ - загружаем напрямую через клиентский SDK
+      console.log('Загружаем файл напрямую через SDK');
       
-      // Создаем FormData для отправки файла на сервер
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('userId', user.id);
+      // Загружаем файл в хранилище Supabase
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('user_documents')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
       
-      // Отправляем запрос на серверный API
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData
-      });
-      
-      const result = await response.json();
-      
-      if (!response.ok) {
-        console.error('Ошибка при загрузке файла:', result);
-        throw new Error(result.error || 'Ошибка при загрузке файла');
+      if (uploadError) {
+        console.error('Ошибка при загрузке файла:', uploadError);
+        throw new Error('Ошибка при загрузке файла: ' + uploadError.message);
       }
       
-      console.log('Файл успешно загружен через API:', result);
+      console.log('Файл успешно загружен:', uploadData);
       
-      // API уже сохранил данные в базу, получаем их
-      const data = result.document;
+      // Сохраняем информацию о файле в базе данных
+      const { data, error } = await supabase
+        .from('user_documents')
+        .insert({
+          user_id: user.id,
+          filename: file.name,
+          file_size: file.size,
+          storage_path: filePath,
+          mime_type: file.type
+        })
+        .select();
       
       console.log('Документ успешно загружен в базу данных:', data);
       

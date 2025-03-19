@@ -17,6 +17,19 @@ export default function AdminLayout({
     // Предотвращаем выполнение на сервере
     if (typeof window === 'undefined') return;
 
+    // Автоматическое обновление сессии при каждом заходе в админку
+    const refreshSession = async () => {
+      try {
+        await supabase.auth.refreshSession(); // Просто обновляем текущую сессию
+        console.log('Сессия обновлена');
+      } catch (error) {
+        console.error('Ошибка обновления сессии:', error);
+      }
+    };
+    
+    // Вызываем обновление сессии при каждом заходе в админку
+    refreshSession();
+
     const checkAuth = async () => {
       try {
         // Проверяем флаг перенаправления, чтобы избежать зацикливания

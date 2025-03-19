@@ -117,35 +117,57 @@ export default function AdminUsersPage() {
         throw new Error('Содержимое документа отсутствует');
       }
       
-      // Самый простой способ - просто открыть в новом окне
-      let url = data.content;
+      let content = data.content;
+      let blobUrl = '';
       
-      // Если не начинается с data:, добавим префикс
-      if (!url.startsWith('data:') && !url.startsWith('http')) {
-        url = `data:${data.mime_type};base64,${url}`;
-      }
-
-      // Для изображений откроем в новом окне
-      if (data.mime_type.startsWith('image/')) {
-        // Открываем новое окно напрямую с изображением
-        window.open(url, '_blank');
+      // Если контент начинается с http, используем его как есть
+      if (content.startsWith('http')) {
+        blobUrl = content;
       } 
-      // Для PDF открываем также в новом окне
-      else if (data.mime_type === 'application/pdf') {
-        window.open(url, '_blank');
-      } 
-      // Для других файлов предлагаем скачать
+      // Если это base64 данные без префикса, добавляем префикс
       else {
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = data.filename || 'файл';
-        a.target = '_blank';
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-          document.body.removeChild(a);
-        }, 100);
+        // Если начинается с data:, используем как есть
+        if (!content.startsWith('data:')) {
+          content = `data:${data.mime_type};base64,${content}`;
+        }
+        
+        // Преобразуем в Blob и создаем URL
+        try {
+          // Извлекаем данные base64 из data URL
+          const base64Data = content.includes('base64,') 
+            ? content.split('base64,')[1] 
+            : content;
+            
+          // Преобразуем base64 в бинарные данные
+          const binaryData = atob(base64Data);
+          
+          // Создаем массив данных
+          const byteArray = new Uint8Array(binaryData.length);
+          for (let i = 0; i < binaryData.length; i++) {
+            byteArray[i] = binaryData.charCodeAt(i);
+          }
+          
+          // Создаем Blob из массива
+          const blob = new Blob([byteArray], { type: data.mime_type });
+          
+          // Создаем URL для Blob
+          blobUrl = URL.createObjectURL(blob);
+          console.log('Создан Blob URL:', blobUrl);
+        } catch (blobError) {
+          console.error('Ошибка при создании Blob из base64:', blobError);
+          // Если не получилось создать Blob, используем data URL как есть
+          blobUrl = content;
+        }
       }
+      
+      // Устанавливаем информацию о просматриваемом документе
+      setViewingDocument({
+        id: documentId,
+        content: blobUrl,
+        mimeType: data.mime_type,
+        filename: data.filename || 'файл'
+      });
+      
     } catch (err: unknown) {
       console.error('Error loading document:', err);
       setError(err instanceof Error ? err.message : 'Ошибка при загрузке документа');
@@ -463,7 +485,62 @@ export default function AdminUsersPage() {
         </div>
       )}
       
-      {/* Модальное окно для просмотра документа было удалено - документы теперь открываются в новом окне браузера */}
+      {/* Модальное окно для просмотра документов */}
+      {viewingDocument && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] flex flex-col">
+            <div className="p-4 border-b flex justify-between items-center">
+              <h3 className="text-lg font-medium">{viewingDocument.filename}</h3>
+              <button
+                onClick={() => {
+                  // При закрытии модального окна освобождаем ресурсы blob URL
+                  if (viewingDocument.content.startsWith('blob:')) {
+                    URL.revokeObjectURL(viewingDocument.content);
+                  }
+                  setViewingDocument(null);
+                }}
+                className="text-gray-400 hover:text-gray-500 focus:outline-none"
+              >
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="p-4 flex-1 overflow-auto">
+              {viewingDocument.mimeType.startsWith('image/') ? (
+                // Отображение изображений
+                <img 
+                  src={viewingDocument.content} 
+                  alt={viewingDocument.filename} 
+                  className="max-w-full max-h-[70vh] mx-auto"
+                />
+              ) : viewingDocument.mimeType === 'application/pdf' ? (
+                // Отображение PDF
+                <iframe 
+                  src={viewingDocument.content} 
+                  className="w-full h-[70vh]"
+                  title={viewingDocument.filename} 
+                />
+              ) : (
+                // Для других типов файлов
+                <div className="text-center py-10">
+                  <p className="mb-4">Этот тип файла не может быть отображен напрямую.</p>
+                  <a 
+                    href={viewingDocument.content} 
+                    download={viewingDocument.filename}
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 bg-gray-500 text-white hover:bg-gray-600 rounded text-sm transition duration-200"
+                  >
+                    Скачать файл
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

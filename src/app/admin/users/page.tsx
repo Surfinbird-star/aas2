@@ -113,116 +113,38 @@ export default function AdminUsersPage() {
         throw error;
       }
       
-      if (!data.content || typeof data.content !== 'string') {
-        throw new Error('Содержимое документа отсутствует или повреждено');
+      if (!data || !data.content) {
+        throw new Error('Содержимое документа отсутствует');
       }
       
-      console.log(`Документ загружен: ${data.filename}, тип: ${data.mime_type}`);
+      // Самый простой способ - просто открыть в новом окне
+      let url = data.content;
       
-      // Получаем чистые base64 данные без префикса
-      let base64Data = data.content;
-      
-      // Если начинается с data:, извлекаем только base64 часть
-      if (base64Data.startsWith('data:')) {
-        const commaIndex = base64Data.indexOf(',');
-        if (commaIndex !== -1) {
-          base64Data = base64Data.substring(commaIndex + 1);
-        }
+      // Если не начинается с data:, добавим префикс
+      if (!url.startsWith('data:') && !url.startsWith('http')) {
+        url = `data:${data.mime_type};base64,${url}`;
       }
-      
-      // Преобразуем base64 в Blob
-      try {
-        // Сначала преобразуем в бинарную строку
-        const binaryString = window.atob(base64Data);
-        const bytes = new Uint8Array(binaryString.length);
-        
-        // Преобразуем каждый символ в соответствующий байт
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        
-        // Создаем Blob из байтового массива
-        const blob = new Blob([bytes], { type: data.mime_type });
-        
-        // Создаем объектный URL для Blob
-        const blobUrl = URL.createObjectURL(blob);
-        
-        // Открываем документ в зависимости от его типа
-        if (data.mime_type.startsWith('image/')) {
-          // Открываем изображение в новом окне с красивым форматированием
-          const win = window.open();
-          if (!win) {
-            alert('Браузер заблокировал открытие нового окна');
-            return;
-          }
-          
-          win.document.write(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <title>${data.filename}</title>
-              <style>
-                body {
-                  margin: 0;
-                  padding: 20px;
-                  display: flex;
-                  flex-direction: column;
-                  justify-content: center;
-                  align-items: center;
-                  min-height: 100vh;
-                  background: #f5f5f5;
-                  font-family: Arial, sans-serif;
-                }
-                .container {
-                  background: white;
-                  padding: 20px;
-                  border-radius: 8px;
-                  box-shadow: 0 0 20px rgba(0,0,0,0.1);
-                  text-align: center;
-                  max-width: 90%;
-                }
-                h2 {
-                  color: #333;
-                  margin-top: 0;
-                }
-                img {
-                  max-width: 100%;
-                  max-height: 70vh;
-                  display: block;
-                  margin: 20px auto;
-                  border-radius: 4px;
-                }
-              </style>
-            </head>
-            <body>
-              <div class="container">
-                <h2>${data.filename}</h2>
-                <img src="${blobUrl}" alt="${data.filename}" />
-              </div>
-            </body>
-            </html>
-          `);
-          win.document.close();
-        } else if (data.mime_type === 'application/pdf') {
-          // PDF открываем напрямую - браузер сам отобразит его
-          window.open(blobUrl, '_blank');
-        } else {
-          // Для других типов файлов предлагаем скачать
-          const a = document.createElement('a');
-          a.href = blobUrl;
-          a.download = data.filename || 'документ';
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-        }
-        
-        // Освобождаем URL через 10 секунд
+
+      // Для изображений откроем в новом окне
+      if (data.mime_type.startsWith('image/')) {
+        // Открываем новое окно напрямую с изображением
+        window.open(url, '_blank');
+      } 
+      // Для PDF открываем также в новом окне
+      else if (data.mime_type === 'application/pdf') {
+        window.open(url, '_blank');
+      } 
+      // Для других файлов предлагаем скачать
+      else {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = data.filename || 'файл';
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
         setTimeout(() => {
-          URL.revokeObjectURL(blobUrl);
-        }, 10000);
-      } catch (blobError) {
-        console.error('Ошибка при создании Blob:', blobError);
-        setError('Не удалось обработать данные документа. Возможно, формат повреждён.');
+          document.body.removeChild(a);
+        }, 100);
       }
     } catch (err: unknown) {
       console.error('Error loading document:', err);

@@ -96,15 +96,15 @@ export default function AdminUsersPage() {
     }
   }, [authorized]);
   
-  // Прямое скачивание документа из хранилища Supabase
+  // Самый простой способ скачивания - напрямую через публичный URL
   const viewDocument = async (documentId: string) => {
     try {
       console.log(`Загрузка документа с ID: ${documentId} для скачивания`);
       
-      // Получаем информацию о документе - storage_path и файловые атрибуты
+      // Получаем информацию о документе - url и файловые атрибуты
       const { data, error } = await supabase
         .from('user_documents')
-        .select('storage_path, filename, mime_type')
+        .select('content, filename')
         .eq('id', documentId)
         .single();
       
@@ -113,51 +113,27 @@ export default function AdminUsersPage() {
         throw error;
       }
       
-      if (!data || !data.storage_path) {
-        throw new Error('Путь к файлу отсутствует в базе данных');
+      if (!data || !data.content) {
+        throw new Error('Содержимое документа отсутствует');
       }
-      
-      console.log('Информация о документе получена:', { 
-        путь: data.storage_path,
+
+      console.log('Документ получен:', { 
         имя: data.filename,
-        тип: data.mime_type
+        содержимое: data.content.substring(0, 50) + '...',
       });
       
-      // Создаём URL для прямого скачивания из хранилища Supabase
-      const { data: fileData, error: downloadError } = await supabase.storage
-        .from('user_documents') // Укажите название вашего хранилища (bucket)
-        .download(data.storage_path);
-
-      if (downloadError) {
-        console.error('Ошибка при загрузке файла из хранилища:', downloadError);
-        throw downloadError;
-      }
-
-      // Создаём URL для загруженного файла
-      const blobUrl = URL.createObjectURL(fileData);
+      // Прямое открытие ссылки в новом окне - самый надежный способ
+      window.open(data.content, '_blank');
       
       // Показываем сообщение об успехе
-      setSuccessMessage(`Файл "${data.filename}" готов к скачиванию`);
+      setSuccessMessage(`Файл "${data.filename}" открыт в новой вкладке. Сохраните его из браузера`);
       
-      // Создаем ссылку для скачивания
-      const downloadLink = document.createElement('a');
-      downloadLink.href = blobUrl;
-      downloadLink.download = data.filename || 'документ';
-      document.body.appendChild(downloadLink);
-      downloadLink.click();
-      
-      // Даем браузеру время на обработку клика и очищаем ссылку
-      setTimeout(() => {
-        document.body.removeChild(downloadLink);
-        URL.revokeObjectURL(blobUrl); // Очищаем ссылку на Blob для экономии памяти
-      }, 2000);
-      
-      // Скрываем сообщение об успехе через 3 секунды
+      // Скрываем сообщение об успехе через 5 секунд
       setTimeout(() => {
         setSuccessMessage('');
-      }, 3000);
+      }, 5000);
       
-      console.log('Скачивание инициировано для файла:', data.filename);
+      console.log('Файл открыт в новой вкладке:', data.filename);
       
     } catch (err: unknown) {
       console.error('Error downloading document:', err);

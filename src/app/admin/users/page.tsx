@@ -96,7 +96,7 @@ export default function AdminUsersPage() {
     }
   }, [authorized]);
   
-  // Работающая функция скачивания файлов через прокси
+  // Самый простой и надежный способ скачивания файлов
   const viewDocument = async (documentId: string) => {
     try {
       console.log(`Загрузка документа с ID: ${documentId} для скачивания`);
@@ -120,36 +120,91 @@ export default function AdminUsersPage() {
       console.log('Документ получен:', { 
         id: data.id,
         имя: data.filename,
-        тип: data.mime_type
+        тип: data.mime_type,
+        размер: data.file_size
       });
       
-      // Создаём временную ссылку для скачивания через API
-      const downloadUrl = `/api/documents/download?id=${documentId}`;
+      // Проверяем, является ли контент URL-ом
+      if (data.content && (data.content.startsWith('http://') || data.content.startsWith('https://'))) {
+        // Если это URL, открываем в новом окне
+        window.open(data.content, '_blank');
+        
+        setSuccessMessage(`Файл "${data.filename}" открыт в новом окне`);
+        setTimeout(() => setSuccessMessage(''), 3000);
+        
+        return;
+      }
       
-      // Создаём ссылку для скачивания
-      const downloadLink = document.createElement('a');
-      downloadLink.href = downloadUrl;
-      downloadLink.download = data.filename || 'документ';
-      downloadLink.target = '_blank'; // Открываем в новой вкладке
-      document.body.appendChild(downloadLink);
+      // Проверяем наличие storage_path для Supabase Storage
+      if (data.storage_path) {
+        try {
+          // Скачиваем из хранилища Supabase
+          const { data: fileData, error: downloadError } = await supabase.storage
+            .from('user_documents')
+            .download(data.storage_path);
+
+          if (downloadError || !fileData) {
+            throw new Error(`Ошибка при скачивании из хранилища: ${downloadError?.message || 'файл не найден'}`);
+          }
+
+          // Создаем ссылку для скачивания
+          const blobUrl = URL.createObjectURL(fileData);
+          const link = document.createElement('a');
+          link.href = blobUrl;
+          link.download = data.filename;
+          document.body.appendChild(link);
+          link.click();
+          
+          // Очищаем
+          setTimeout(() => {
+            document.body.removeChild(link);
+            URL.revokeObjectURL(blobUrl);
+          }, 100);
+
+          setSuccessMessage(`Файл "${data.filename}" скачивается`);
+          setTimeout(() => setSuccessMessage(''), 3000);
+          
+          return;
+        } catch (storageError) {
+          console.error('Ошибка при скачивании из хранилища:', storageError);
+          // Продолжаем с другими способами
+        }
+      }
       
-      // Начинаем скачивание
-      downloadLink.click();
+      // Прямое скачивание из таблицы базы данных
+      if (data.content) {
+        try {
+          // Попытка прямого использования содержимого
+          const link = document.createElement('a');
+          
+          // Если это data URL
+          if (data.content.startsWith('data:')) {
+            link.href = data.content;
+          } else {
+            // Если это просто строка, пробуем создать data URL с указанным MIME-типом
+            link.href = `data:${data.mime_type || 'application/octet-stream'};base64,${data.content}`;
+          }
+          
+          link.download = data.filename;
+          document.body.appendChild(link);
+          link.click();
+          
+          setTimeout(() => {
+            document.body.removeChild(link);
+          }, 100);
+          
+          setSuccessMessage(`Файл "${data.filename}" скачивается`);
+          setTimeout(() => setSuccessMessage(''), 3000);
+          
+          return;
+        } catch (contentError) {
+          console.error('Ошибка при использовании содержимого:', contentError);
+        }
+      }
       
-      // Удаляем элемент
-      setTimeout(() => {
-        document.body.removeChild(downloadLink);
-      }, 100);
-      
-      // Показываем сообщение об успехе
-      setSuccessMessage(`Файл "${data.filename}" будет скачан автоматически`);
-      
-      // Скрываем сообщение об успехе через 3 секунды
-      setTimeout(() => {
-        setSuccessMessage('');
-      }, 3000);
-      
-      console.log('Запрос на скачивание файла отправлен:', data.filename);
+      // Если все способы не удались
+      setError('Не удалось скачать файл. Попробуйте позже или свяжитесь с администратором.');
+      setTimeout(() => setError(''), 5000);
       
     } catch (err: unknown) {
       console.error('Error downloading document:', err);

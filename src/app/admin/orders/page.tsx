@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import * as XLSX from 'xlsx'
 import { saveAs } from 'file-saver'
@@ -77,16 +78,67 @@ export default function AdminOrdersPage() {
   const [savingQuantities, setSavingQuantities] = useState(false)
   const [orderItemsToUpdate, setOrderItemsToUpdate] = useState<{[orderId: string]: {[itemId: string]: number}}>({})
 
+  // Проверка авторизации в sessionStorage
+  useEffect(() => {
+    const isAuthorized = typeof window !== 'undefined' && sessionStorage.getItem('admin_authenticated') === 'true';
+    setAuthorized(isAuthorized);
+    if (isAuthorized) {
+      console.log('Ранняя проверка авторизации успешна');
+      // Небольшая задержка для загрузки заказов для более плавного UI
+      setTimeout(() => {
+        fetchOrders();
+      }, 300);
+    } else {
+      console.log('Проверка авторизации через API');
+      checkAuth();
+    }
+  }, []);
+  
+  // Полная проверка авторизации через API
+  const checkAuth = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        console.log('Сессия не найдена, перенаправление на логин');
+        router.push('/admin/login');
+        return;
+      }
+      
+      // Проверяем права администратора
+      const { data: profileData, error } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', session.user.id)
+        .single();
+      
+      if (error || !profileData?.is_admin) {
+        console.log('Нет прав администратора, перенаправление на логин');
+        router.push('/admin/login');
+        return;
+      }
+      
+      // Сохраняем статус в sessionStorage
+      sessionStorage.setItem('admin_authenticated', 'true');
+      setAuthorized(true);
+      fetchOrders();
+    } catch (err) {
+      console.error('Ошибка при проверке авторизации:', err);
+      router.push('/admin/login');
+    }
+  };
+
   // Получение списка заказов
   const fetchOrders = async () => {
     setLoading(true)
     setError(null)
+    console.log('Запускаем загрузку заказов...')
     
     // Создаём тайм-аут для предотвращения бесконечной загрузки
     const timeoutPromise = new Promise((_, reject) => {
       setTimeout(() => {
         reject(new Error('Тайм-аут загрузки данных. Проверьте коннект с базой данных.'))
-      }, 10000) // 10 секунд тайм-аут
+      }, 30000) // Увеличиваем тайм-аут до 30 секунд
     })
     
     try {
@@ -204,23 +256,71 @@ export default function AdminOrdersPage() {
     }
   }
 
-  // Проверка авторизации через sessionStorage
+  // Проверка авторизации и загрузка заказов
+  const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
   
+  // Проверка авторизации с загрузкой данных
   useEffect(() => {
-    const isAuthorized = typeof window !== 'undefined' && sessionStorage.getItem('admin_authenticated') === 'true';
-    setAuthorized(isAuthorized);
-    if (isAuthorized) {
-      setLoading(true); // Устанавливаем загрузку при проверке авторизации
-    }
+    const checkAuth = async () => {
+      try {
+        // Сначала быстрая проверка через sessionStorage
+        const isAuthorized = typeof window !== 'undefined' && sessionStorage.getItem('admin_authenticated') === 'true';
+        
+        if (isAuthorized) {
+          console.log('Авторизация подтверждена из sessionStorage');
+          setAuthorized(true);
+          // Загружаем данные с небольшой задержкой для плавного UI
+          setTimeout(() => {
+            fetchOrders();
+          }, 300);
+          return;
+        }
+
+        // Если нет в sessionStorage, проверяем через API
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          console.log('Сессия не найдена, перенаправление на логин');
+          router.push('/admin/login');
+          return;
+        }
+        
+        // Проверяем права администратора
+        const { data: profileData, error } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', session.user.id)
+          .single();
+        
+        if (error || !profileData?.is_admin) {
+          console.log('Нет прав администратора, перенаправление на логин');
+          router.push('/admin/login');
+          return;
+        }
+        
+        // Сохраняем статус в sessionStorage
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('admin_authenticated', 'true');
+        }
+        
+        setAuthorized(true);
+        fetchOrders();
+      } catch (err) {
+        console.error('Ошибка при проверке авторизации:', err);
+        router.push('/admin/login');
+      }
+    };
+    
+    checkAuth();
   }, []);
   
-  // Вызываем загрузку заказов при первом рендере и изменении сортировки
+  // Вызываем загрузку заказов при изменении сортировки или фильтра
   useEffect(() => {
-    if (authorized) {
-      fetchOrders()
+    if (authorized && dateSort) {
+      fetchOrders();
     }
-  }, [dateSort, authorized])
+  }, [dateSort]);
 
   // Фильтрация и поиск заказов
   const filteredOrders = orders.filter(order => {

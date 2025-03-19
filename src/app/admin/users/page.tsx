@@ -183,15 +183,51 @@ export default function AdminUsersPage() {
       // Прямое скачивание из таблицы базы данных
       if (data.content) {
         try {
-          // Попытка прямого использования содержимого
+          console.log('Пробуем обработать содержимое документа');
           const link = document.createElement('a');
           
           // Если это data URL
           if (data.content.startsWith('data:')) {
             link.href = data.content;
+            console.log('Обнаружен data URL');
           } else {
-            // Если это просто строка, пробуем создать data URL с указанным MIME-типом
-            link.href = `data:${data.mime_type || 'application/octet-stream'};base64,${data.content}`;
+            // Проверяем, не является ли это PostgreSQL BYTEA форматом (\x...)
+            if (data.content.startsWith('\\x')) {
+              console.log('Обнаружен BYTEA формат, обрабатываем');
+              
+              // Удаляем префикс \x и преобразуем hex в base64
+              try {
+                // Удаляем префикс \x и все переносы строк
+                const hexString = data.content.replace(/\\x/, '').replace(/[\n\r\s]/g, '');
+                
+                // Преобразуем hex в ArrayBuffer
+                console.log('Длина HEX строки:', hexString.length);
+                
+                const byteArray = new Uint8Array(hexString.length / 2);
+                
+                // Преобразование каждой пары hex в байт
+                for (let i = 0; i < hexString.length; i += 2) {
+                  byteArray[i/2] = parseInt(hexString.substr(i, 2), 16);
+                }
+                
+                // Создаем Blob из массива байтов
+                const blob = new Blob([byteArray], { type: data.mime_type || 'application/octet-stream' });
+                link.href = URL.createObjectURL(blob);
+                console.log('Создан Blob из HEX данных');
+              } catch (hexError) {
+                console.error('Ошибка при обработке HEX:', hexError);
+                // Если не удалось, пробуем как обычный base64
+                link.href = `data:${data.mime_type || 'application/octet-stream'};base64,${btoa(data.content)}`;
+              }
+            } else {
+              // В остальных случаях пробуем обычный base64
+              try {
+                link.href = `data:${data.mime_type || 'application/octet-stream'};base64,${data.content}`;
+                console.log('Используем содержимое как base64');
+              } catch (base64Error) {
+                console.error('Ошибка при использовании base64:', base64Error);
+              }
+            }
           }
           
           link.download = data.filename;

@@ -113,45 +113,98 @@ export default function AdminUsersPage() {
         throw error;
       }
       
-      // Проверяем, что content существует и является строкой
       if (!data.content || typeof data.content !== 'string') {
-        console.error('Содержимое документа отсутствует или не является строкой');
         throw new Error('Содержимое документа отсутствует или повреждено');
       }
       
-      console.log(`Документ загружен: ${data.filename}, тип: ${data.mime_type}, размер: ${data.content.length} символов`);
+      console.log(`Документ загружен: ${data.filename}, тип: ${data.mime_type}`);
       
-      // Создаем Blob и открываем его в новом окне
-      try {
-        // Декодируем base64 в бинарные данные
-        let base64Content = data.content;
-        // Убираем префикс data:..;base64, если он есть
-        if (base64Content.includes(',')) {
-          base64Content = base64Content.split(',')[1];
-        }
-
-        const binaryString = atob(base64Content);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-
-        // Создаем Blob из бинарных данных
-        const blob = new Blob([bytes], { type: data.mime_type });
-        const blobUrl = URL.createObjectURL(blob);
-        
-        // Открываем URL в новом окне
-        window.open(blobUrl, '_blank');
-        
-        // Для чистоты освобождаем URL когда он больше не нужен
-        setTimeout(() => {
-          URL.revokeObjectURL(blobUrl);
-        }, 60000); // Освобождаем через минуту
-        
-      } catch (blobError) {
-        console.error('Ошибка при создании Blob:', blobError);
-        throw new Error('Не удалось открыть документ. Возможно, данные повреждены.');
+      // Создаем временный iframe для отображения документа
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      document.body.appendChild(iframe);
+      
+      // Создаем документ с отображением изображения
+      const doc = iframe.contentDocument;
+      if (!doc) {
+        document.body.removeChild(iframe);
+        throw new Error('Не удалось создать временный документ');
       }
+      
+      let content = data.content;
+      
+      // Если содержимое не начинается с "data:", добавляем префикс
+      if (!content.startsWith('data:')) {
+        content = `data:${data.mime_type};base64,${content}`;
+      }
+      
+      // Создаем HTML с изображением
+      doc.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>${data.filename}</title>
+          <style>
+            body {
+              margin: 0;
+              padding: 0;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              min-height: 100vh;
+              background: #f5f5f5;
+            }
+            img, object {
+              max-width: 95%;
+              max-height: 95vh;
+              box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            }
+            .error {
+              color: red;
+              font-family: Arial, sans-serif;
+              padding: 20px;
+              text-align: center;
+              background: white;
+              border-radius: 5px;
+              box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            }
+          </style>
+        </head>
+        <body>
+      `);
+      
+      // Добавляем изображение с обработкой ошибок
+      if (data.mime_type.startsWith('image/')) {
+        doc.write(`
+          <img src="${content}" alt="${data.filename}" onerror="
+            document.body.innerHTML = '<div class=\'error\'>Не удалось загрузить изображение.</div>';
+          ">
+        `);
+      } else if (data.mime_type === 'application/pdf') {
+        doc.write(`
+          <object data="${content}" type="application/pdf" width="100%" height="100%">
+            <div class="error">Не удалось загрузить PDF. Возможно, ваш браузер не поддерживает встроенный просмотр PDF.</div>
+          </object>
+        `);
+      } else {
+        doc.write(`<div class="error">Формат ${data.mime_type} не поддерживает предварительный просмотр.</div>`);
+      }
+      
+      doc.write('</body></html>');
+      doc.close();
+
+      // Открываем iframe в новом окне
+      const win = window.open('', '_blank');
+      if (win) {
+        win.document.write(doc.documentElement.outerHTML);
+        win.document.close();
+      } else {
+        alert('Браузер заблокировал открытие нового окна.');
+      }
+      
+      // Удаляем временный iframe
+      document.body.removeChild(iframe);
+      
     } catch (err: unknown) {
       console.error('Error loading document:', err);
       setError(err instanceof Error ? err.message : 'Ошибка при загрузке документа');

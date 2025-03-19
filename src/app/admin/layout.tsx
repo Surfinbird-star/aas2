@@ -11,14 +11,25 @@ export default function AdminLayout({
   children: React.ReactNode
 }) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
   
   useEffect(() => {
+    // Обработчик для хранения информации о перенаправлении
+    const redirectFlag = sessionStorage.getItem('admin_redirect');
+    if (redirectFlag) {
+      // Удаляем флаг перенаправления, чтобы не зациклиться
+      sessionStorage.removeItem('admin_redirect'); 
+      setLoading(false);
+      return;
+    }
+
     // Проверяем, авторизован ли администратор (один раз при загрузке страницы)
     if (typeof window !== 'undefined') {
       const isAdminAuthenticated = sessionStorage.getItem('admin_authenticated') === 'true';
       
       if (isAdminAuthenticated) {
         setIsAuthenticated(true);
+        setLoading(false);
         return;
       }
       
@@ -28,6 +39,8 @@ export default function AdminLayout({
           const { data: { session } } = await supabase.auth.getSession();
           
           if (!session) {
+            // Устанавливаем флаг перенаправления
+            sessionStorage.setItem('admin_redirect', 'true');
             window.location.href = '/admin/login';
             return;
           }
@@ -43,11 +56,16 @@ export default function AdminLayout({
             // Сохраняем статус в sessionStorage
             sessionStorage.setItem('admin_authenticated', 'true');
             setIsAuthenticated(true);
+            setLoading(false);
           } else {
+            // Устанавливаем флаг перенаправления
+            sessionStorage.setItem('admin_redirect', 'true');
             window.location.href = '/admin/login?error=not_admin';
           }
         } catch (error) {
           console.error('Ошибка при проверке сессии:', error);
+          // Устанавливаем флаг перенаправления
+          sessionStorage.setItem('admin_redirect', 'true');
           window.location.href = '/admin/login';
         }
       };
@@ -59,20 +77,22 @@ export default function AdminLayout({
   // Функция для выхода из аккаунта
   const handleLogout = async () => {
     try {
-      // Сначала очищаем состояние аутентификации в приложении
+      // Сначала устанавливаем флаг перенаправления, чтобы предотвратить зацикливание
+      sessionStorage.setItem('admin_redirect', 'true');
+      
+      // Очищаем состояние аутентификации
+      sessionStorage.removeItem('admin_authenticated');
       setIsAuthenticated(false);
       
-      // Затем удаляем информацию об авторизации из sessionStorage
-      sessionStorage.removeItem('admin_authenticated');
-      
-      // И только после этого выходим из Supabase
+      // Выходим из Supabase
       await supabase.auth.signOut();
       
-      // Перенаправляем пользователя на страницу входа
-      // Используем жесткое перенаправление с заменой текущей страницы в истории браузера
+      // Отключаем использование истории браузера и перенаправляем на страницу входа
       window.location.replace('/admin/login');
     } catch (error) {
       console.error('Ошибка при выходе из аккаунта:', error);
+      // Даже в случае ошибки устанавливаем флаг перенаправления
+      sessionStorage.setItem('admin_redirect', 'true');
       sessionStorage.removeItem('admin_authenticated');
       setIsAuthenticated(false);
       window.location.replace('/admin/login');
@@ -80,10 +100,18 @@ export default function AdminLayout({
   }
 
   // Показываем загрузку, пока не завершена проверка авторизации
+  if (loading) {
+    return (
+      <div className="min-h-screen flex justify-center items-center bg-gray-100">
+        <div className="text-gray-500">Загрузка...</div>
+      </div>
+    );
+  }
+  
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex justify-center items-center bg-gray-100">
-        <div className="text-gray-500">Проверка доступа...</div>
+        <div className="text-gray-500">Нет доступа. <a href="/admin/login" className="text-blue-500 underline">Войти</a></div>
       </div>
     );
   }

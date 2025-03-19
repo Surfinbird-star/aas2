@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, FormEvent, Suspense } from 'react'
+import { useState, FormEvent, Suspense, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
@@ -21,6 +21,14 @@ function LoginContent() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  
+  // При загрузке страницы входа удаляем любые флаги авторизации
+  useEffect(() => {
+    // Удаляем флаг перенаправления, чтобы избежать зацикливания
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('admin_redirect');
+    }
+  }, [])
 
   // Добавляем базовые сообщения об ошибках из URL
   const errorParam = searchParams.get('error')
@@ -77,6 +85,8 @@ function LoginContent() {
         if (profileError) {
           console.error('Ошибка при получении профиля:', profileError)
           setError('Ошибка при проверке прав администратора')
+          // Сначала устанавливаем флаг перенаправления
+          sessionStorage.setItem('admin_redirect', 'true');
           // Выходим из аккаунта, так как не можем проверить права
           await supabase.auth.signOut()
           setLoading(false)
@@ -88,15 +98,20 @@ function LoginContent() {
           console.log('Отказ в доступе: пользователь не является администратором')
           setError('У вас нет прав администратора')
           // Выходим из аккаунта администратора и перенаправляем на страницу с товарами
+          sessionStorage.setItem('admin_redirect', 'true');
           await supabase.auth.signOut()
           setLoading(false)
-          router.push('/products')
+          // Используем жесткое перенаправление
+          window.location.replace('/products')
           return
         }
         
-        // Пользователь имеет права администратора, перенаправляем на страницу заказов
+        // Пользователь имеет права администратора, устанавливаем флаг перенаправления
+        sessionStorage.setItem('admin_authenticated', 'true');
         console.log('Доступ разрешен: пользователь является администратором')
-        router.push('/admin/orders')
+        
+        // Используем жесткое перенаправление вместо router.push для надежности
+        window.location.replace('/admin/orders')
       } catch (profileCheckError: any) {
         console.error('Ошибка при проверке прав администратора:', profileCheckError)
         setError('Ошибка при проверке прав администратора')

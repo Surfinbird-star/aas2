@@ -42,6 +42,20 @@ export async function POST(request: NextRequest) {
     // Используем административный доступ для обхода RLS
     const supabaseAdmin = getSupabaseAdmin();
     
+    // Проверяем, существует ли пользователь с таким ID в системе auth
+    const { data: authUserData, error: authUserCheckError } = await supabaseAdmin.auth.admin.getUserById(id);
+    
+    if (authUserCheckError) {
+      console.error('API: Пользователь не найден в auth.users:', authUserCheckError.message);
+      return NextResponse.json(
+        { error: 'Пользователь не найден в системе аутентификации' },
+        { status: 404 }
+      );
+    }
+    
+    // Даем небольшую паузу, чтобы убедиться, что запись auth.users полностью распространилась
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
     // Сначала проверяем, существует ли профиль с таким ID
     const { data: existingProfile, error: checkError } = await supabaseAdmin
       .from('profiles')

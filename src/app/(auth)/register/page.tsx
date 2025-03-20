@@ -65,8 +65,8 @@ export default function RegisterPage() {
           console.log('Отправка запроса на API для создания профиля');
           
           // Используем серверный API-маршрут для создания профиля в обход RLS
-          const currentPort = window.location.port || '3000';
-          const baseUrl = `${window.location.protocol}//${window.location.hostname}:${currentPort}`;
+          // Исправляем URL - убираем порт и используем основной домен для API
+          const baseUrl = window.location.origin;
           console.log('Используем базовый URL:', baseUrl);
           
           const response = await fetch(`${baseUrl}/api/register`, {
@@ -93,6 +93,16 @@ export default function RegisterPage() {
             try {
               console.log('Попытка создания профиля напрямую через Supabase');
               const supabaseAdmin = getSupabaseAdmin();
+              
+              // Сначала проверяем, что пользователь уже полностью создан в auth.users
+              const { data: authUserData, error: authUserCheckError } = await supabaseAdmin.auth.admin.getUserById(authData.user.id);
+              
+              if (authUserCheckError) {
+                console.error('Ошибка при проверке пользователя:', authUserCheckError.message);
+                throw new Error(`Пользователь не найден или недоступен: ${authUserCheckError.message}`);
+              }
+              
+              // Теперь создаем запись в profiles
               const { data, error } = await supabaseAdmin
                 .from('profiles')
                 .upsert([

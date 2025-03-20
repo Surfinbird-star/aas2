@@ -49,95 +49,47 @@ export default function RegisterPage() {
 
       if (authData.user) {
         // Добавление профиля пользователя с дополнительной информацией
-        console.log('Создание профиля для пользователя:', authData.user.id);
-        try {
-          const profileData = {
-            id: authData.user.id,
-            first_name: firstName,
-            last_name: lastName,
-            name: firstName + ' ' + lastName,
-            email: email,
-            phone,
-            address: address || null,
-          };
-
-          console.log('Данные профиля:', profileData);
-          console.log('Отправка запроса на API для создания профиля');
-          
-          // Используем серверный API-маршрут для создания профиля в обход RLS
-          // Исправляем URL - убираем порт и используем основной домен для API
-          const baseUrl = window.location.origin;
-          console.log('Используем базовый URL:', baseUrl);
-          
-          const response = await fetch(`${baseUrl}/api/register`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(profileData),
-          });
-          
-          const result = await response.json();
-          
-          if (!response.ok) {
-            console.error('Ошибка при создании профиля через API:', result.error);
-            throw new Error(result.error || 'Ошибка при создании профиля через API');
-          }
-          
-          console.log('Профиль успешно создан через API:', result.data);
-        } catch (profileErr: any) {
-          console.error('Сбой при создании профиля:', profileErr.message);
-          
-          // Если произошла ошибка сети, попробуем обновить профиль напрямую через Supabase
-          if (profileErr.message === 'Failed to fetch') {
-            try {
-              console.log('Попытка создания профиля напрямую через Supabase');
-              const supabaseAdmin = getSupabaseAdmin();
-              
-              // Сначала проверяем, что пользователь уже полностью создан в auth.users
-              const { data: authUserData, error: authUserCheckError } = await supabaseAdmin.auth.admin.getUserById(authData.user.id);
-              
-              if (authUserCheckError) {
-                console.error('Ошибка при проверке пользователя:', authUserCheckError.message);
-                throw new Error(`Пользователь не найден или недоступен: ${authUserCheckError.message}`);
-              }
-              
-              // Теперь создаем запись в profiles
-              const { data, error } = await supabaseAdmin
-                .from('profiles')
-                .upsert([
-                  {
-                    id: authData.user.id,
-                    first_name: firstName,
-                    last_name: lastName,
-                    name: firstName + ' ' + lastName,
-                    email: email,
-                    phone,
-                    address: address || null,
-                    created_at: new Date().toISOString()
-                  }
-                ])
-                .select();
-              
-              if (error) {
-                console.error('Ошибка при прямом обновлении профиля:', error.message);
-                throw new Error(`Ошибка при прямом обновлении профиля: ${error.message}`);
-              }
-              
-              console.log('Профиль успешно обновлен напрямую:', data);
-            } catch (directError: any) {
-              console.error('Ошибка при прямом обновлении:', directError.message);
-              throw new Error(`Ошибка при прямом обновлении профиля: ${directError.message}`);
-            }
-          } else {
-            throw new Error(`Ошибка при создании профиля: ${profileErr.message}`);
-          }
+        console.log('Создаем профиль напрямую через Supabase Admin');
+        const supabaseAdmin = getSupabaseAdmin();
+        
+        // Сначала проверяем, что пользователь уже полностью создан в auth.users
+        const { data: authUserData, error: authUserCheckError } = await supabaseAdmin.auth.admin.getUserById(authData.user.id);
+        
+        if (authUserCheckError) {
+          console.error('Ошибка при проверке пользователя:', authUserCheckError.message);
+          throw new Error(`Пользователь не найден или недоступен: ${authUserCheckError.message}`);
         }
-
+        
+        // Даем небольшую паузу, чтобы гарантировать, что запись auth.users доступна
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // Теперь создаем запись в profiles
+        const { data, error: profileError } = await supabaseAdmin
+          .from('profiles')
+          .upsert([
+            {
+              id: authData.user.id,
+              first_name: firstName,
+              last_name: lastName,
+              name: firstName + ' ' + lastName,
+              email: email,
+              phone,
+              address: address || null,
+              created_at: new Date().toISOString()
+            }
+          ])
+          .select();
+        
+        if (profileError) {
+          console.error('Ошибка при создании профиля:', profileError.message);
+          throw new Error(`Ошибка при создании профиля: ${profileError.message}`);
+        }
+        
+        console.log('Профиль успешно создан:', data);
+        
         // Успешная регистрация, показываем уведомление о проверке почты
         console.log('Регистрация успешна, показываем сообщение о проверке почты')
         setRegistered(true)
-        // После подтверждения почты пользователь должен будет войти через форму логина
       }
     } catch (error: any) {
       console.error('Ошибка регистрации:', error);

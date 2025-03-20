@@ -32,21 +32,20 @@ export default function RegisterPage() {
     }
     
     try {
-      // Проверка домена email
-      // Supabase отклоняет некоторые домены, поэтому явно проверим домен
-      const emailDomain = email.split('@')[1];
-      if (emailDomain === 'ya.com') {
-        setError('Используйте email с другим доменом (gmail.com, yandex.ru и т.д.)');
-        setLoading(false);
-        return;
-      }
-      
       // Регистрация в Supabase Auth
       console.log('Отправка запроса на регистрацию в Supabase')
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      
+      // УБИРАЕМ ВСЕ ПРОВЕРКИ EMAIL!
+      // Создаем пользователя напрямую через админский API
+      const supabaseAdmin = getSupabaseAdmin();
+      
+      // 1. Создаем учетную запись пользователя
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email,
         password,
-      })
+        email_confirm: true // Автоматически подтверждаем email, чтобы не ждать письма
+      });
+      
       console.log('Ответ от Supabase:', authData, authError)
 
       if (authError) {

@@ -55,40 +55,36 @@ export default function RegisterPage() {
       if (authData.user) {
         // Добавление профиля пользователя с дополнительной информацией
         console.log('Создание профиля для пользователя:', authData.user.id);
+        
+        const profileData = {
+          id: authData.user.id,
+          first_name: firstName,
+          last_name: lastName,
+          name: `${firstName} ${lastName}`,
+          email: email,
+          phone: phone,
+          address: address,
+          created_at: new Date().toISOString()
+        };
+        
+        console.log('Данные профиля:', profileData);
+        
         try {
-          const profileData = {
-            id: authData.user.id,
-            first_name: firstName,
-            last_name: lastName,
-            name: firstName + ' ' + lastName,
-            email: email,
-            phone,
-            address: address || null,
-            created_at: new Date().toISOString()
-          };
-
-          console.log('Данные профиля:', profileData);
-          
-          // Создаем запись в profiles напрямую через Supabase
-          const { data, error } = await supabase
+          // Используем админский доступ для добавления профиля
+          const { error: profileError } = await supabaseAdmin
             .from('profiles')
-            .insert([profileData])
-            .select();
+            .insert([profileData]);
           
-          if (error) {
-            console.error('Ошибка при создании профиля:', error.message);
-            // Продолжаем выполнение даже при ошибке с профилем
-          } else {
-            console.log('Профиль успешно создан:', data);
+          if (profileError) {
+            console.error('Ошибка при создании профиля:', profileError.message);
           }
-        } catch (profileErr) {
-          console.error('Ошибка при создании профиля:', profileErr);
-          // Продолжаем выполнение даже при ошибке
+        } catch (profileError) {
+          console.error('Ошибка при создании профиля:', profileError);
         }
         
-        // Успешная регистрация, показываем уведомление о проверке почты
-        console.log('Регистрация успешна, показываем сообщение о проверке почты')
-        setRegistered(true)
+        // Даже если создание профиля не удалось, продолжаем процесс регистрации
+        setRegistered(true);
+        console.log('Регистрация успешна, показываем сообщение о проверке почты');
       }
     } catch (error: any) {
       console.error('Ошибка регистрации:', error);

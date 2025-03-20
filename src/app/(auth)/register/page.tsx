@@ -70,21 +70,28 @@ export default function RegisterPage() {
         console.log('Данные профиля:', profileData);
         
         try {
-          // Используем админский доступ для добавления профиля
+          // Используем upsert вместо insert для обновления существующего профиля
           const { error: profileError } = await supabaseAdmin
             .from('profiles')
-            .insert([profileData]);
+            .upsert([profileData], { onConflict: 'id' });
           
           if (profileError) {
-            console.error('Ошибка при создании профиля:', profileError.message);
+            console.error('Ошибка при обновлении профиля:', profileError.message);
+          } else {
+            console.log('Профиль успешно обновлен');
           }
         } catch (profileError) {
-          console.error('Ошибка при создании профиля:', profileError);
+          console.error('Ошибка при обновлении профиля:', profileError);
         }
         
-        // Даже если создание профиля не удалось, продолжаем процесс регистрации
+        // После успешной регистрации перенаправляем на страницу входа
         setRegistered(true);
-        console.log('Регистрация успешна, показываем сообщение о проверке почты');
+        console.log('Регистрация успешна, показываем сообщение');
+        
+        // Автоматический переход на страницу входа через 3 секунды
+        setTimeout(() => {
+          router.push('/login');
+        }, 3000);
       }
     } catch (error: any) {
       console.error('Ошибка регистрации:', error);

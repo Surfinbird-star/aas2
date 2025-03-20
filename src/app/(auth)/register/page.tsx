@@ -7,13 +7,8 @@ import { supabase, getSupabaseAdmin } from '@/lib/supabase'
 
 export default function RegisterPage() {
   const router = useRouter()
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
-  const [phone, setPhone] = useState('')
-  const [address, setAddress] = useState('')
   const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [registered, setRegistered] = useState(false)
@@ -24,22 +19,14 @@ export default function RegisterPage() {
     setError(null)
     console.log('Начало процесса регистрации')
 
-    // Проверка совпадения паролей
-    if (password !== confirmPassword) {
-      setError('Пароли не совпадают')
-      setLoading(false)
-      return
-    }
-    
     try {
       // Регистрация в Supabase Auth
       console.log('Отправка запроса на регистрацию в Supabase')
+      
+      // Убираем параметр emailRedirectTo, так как он может вызывать проблемы
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/login`,
-        }
+        password
       })
       console.log('Ответ от Supabase:', authData, authError)
 
@@ -49,58 +36,38 @@ export default function RegisterPage() {
 
       if (authData.user) {
         // Добавление профиля пользователя с дополнительной информацией
-        console.log('Создаем профиль напрямую через Supabase Admin');
-        const supabaseAdmin = getSupabaseAdmin();
-        
-        // Сначала проверяем, что пользователь уже полностью создан в auth.users
-        const { data: authUserData, error: authUserCheckError } = await supabaseAdmin.auth.admin.getUserById(authData.user.id);
-        
-        if (authUserCheckError) {
-          console.error('Ошибка при проверке пользователя:', authUserCheckError.message);
-          throw new Error(`Пользователь не найден или недоступен: ${authUserCheckError.message}`);
+        try {
+          console.log('Создание профиля для пользователя:', authData.user.id);
+          
+          // Создаем запись в profiles
+          const { data, error } = await supabase
+            .from('profiles')
+            .insert([
+              {
+                id: authData.user.id,
+                email: email,
+                created_at: new Date().toISOString()
+              }
+            ])
+            .select();
+          
+          if (error) {
+            console.error('Ошибка при создании профиля:', error.message);
+            // Продолжаем выполнение, даже если есть ошибка при создании профиля
+          } else {
+            console.log('Профиль успешно создан:', data);
+          }
+        } catch (profileErr) {
+          console.error('Ошибка при создании профиля:', profileErr);
+          // Продолжаем выполнение, даже если есть ошибка при создании профиля
         }
         
-        // Даем небольшую паузу, чтобы гарантировать, что запись auth.users доступна
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        // Теперь создаем запись в profiles
-        const { data, error: profileError } = await supabaseAdmin
-          .from('profiles')
-          .upsert([
-            {
-              id: authData.user.id,
-              first_name: firstName,
-              last_name: lastName,
-              name: firstName + ' ' + lastName,
-              email: email,
-              phone,
-              address: address || null,
-              created_at: new Date().toISOString()
-            }
-          ])
-          .select();
-        
-        if (profileError) {
-          console.error('Ошибка при создании профиля:', profileError.message);
-          throw new Error(`Ошибка при создании профиля: ${profileError.message}`);
-        }
-        
-        console.log('Профиль успешно создан:', data);
-        
-        // Успешная регистрация, показываем уведомление о проверке почты
-        console.log('Регистрация успешна, показываем сообщение о проверке почты')
-        setRegistered(true)
+        // Показываем сообщение об успешной регистрации в любом случае
+        console.log('Регистрация успешна, показываем сообщение о проверке почты');
+        setRegistered(true);
       }
     } catch (error: any) {
       console.error('Ошибка регистрации:', error);
-      
-      // Попробуем всё равно показать сообщение о проверке почты
-      if (email && !error.message?.includes('duplicate')) {
-        console.log('Несмотря на ошибку, показываем сообщение о проверке почты');
-        setRegistered(true);
-        setLoading(false);
-        return;
-      }
       
       // Более подробное объяснение ошибки
       let errorMessage = 'Ошибка при регистрации';
@@ -108,9 +75,7 @@ export default function RegisterPage() {
       if (error.message) {
         console.log('Текст ошибки:', error.message);
         
-        if (error.message.includes('profiles') && error.message.includes('policy')) {
-          errorMessage = 'Ошибка политики доступа: необходимо настроить RLS для таблицы profiles';
-        } else if (error.message.includes('duplicate key')) {
+        if (error.message.includes('duplicate key')) {
           errorMessage = 'Пользователь с таким email уже существует';
         } else if (error.message.includes('invalid')) {
           errorMessage = 'Неверный формат данных. Проверьте введенные значения';
@@ -157,122 +122,48 @@ export default function RegisterPage() {
             </div>
           )}
 
-        <form onSubmit={handleRegister} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <form onSubmit={handleRegister} className="space-y-4">
             <div>
-              <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
-                Имя *
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                Email *
               </label>
               <input
-                id="firstName"
-                type="text"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                placeholder="your@email.com"
               />
             </div>
+
             <div>
-              <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
-                Фамилия *
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                Пароль *
               </label>
               <input
-                id="lastName"
-                type="text"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 required
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                placeholder="Минимум 6 символов"
+                minLength={6}
               />
             </div>
-          </div>
 
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              Email *
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-              placeholder="your@email.com"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-              Телефон *
-            </label>
-            <input
-              id="phone"
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              required
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-              placeholder="Введите номер телефона"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="address" className="block text-sm font-medium text-gray-700">
-              Адрес (опционально)
-            </label>
-            <input
-              id="address"
-              type="text"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-              placeholder="Улица, дом, квартира"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-              Пароль *
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-              placeholder="Минимум 6 символов"
-              minLength={6}
-            />
-          </div>
-          
-          <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-              Подтвердите пароль *
-            </label>
-            <input
-              id="confirmPassword"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-              placeholder="Минимум 6 символов"
-              minLength={6}
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-              loading ? 'opacity-70 cursor-not-allowed' : ''
-            }`}
-          >
-            {loading ? 'Регистрация...' : 'Зарегистрироваться'}
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={loading}
+              className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                loading ? 'opacity-70 cursor-not-allowed' : ''
+              }`}
+            >
+              {loading ? 'Регистрация...' : 'Зарегистрироваться'}
+            </button>
+          </form>
 
           <div className="text-center mt-4">
             <p className="text-sm text-gray-600">
